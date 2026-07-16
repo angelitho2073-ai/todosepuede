@@ -1,0 +1,2909 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>San Andres Asistente inteligente</title>
+    <link rel="icon" href="img/logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+        import {
+            getFirestore,
+            collection,
+            addDoc,
+            getDocs,
+            deleteDoc,
+            updateDoc,
+            setDoc,
+            getDoc,
+            doc,
+            query,
+            orderBy
+        } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+        import {
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            sendEmailVerification,
+            sendPasswordResetEmail,
+            GoogleAuthProvider,
+            signInWithPopup,
+            signOut,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBz6DWr11jArnew3yf3SVYuSJeEebGuK50",
+            authDomain: "saintandrescollege-95314.firebaseapp.com",
+            projectId: "saintandrescollege-95314",
+            storageBucket: "saintandrescollege-95314.firebasestorage.app",
+            messagingSenderId: "1031238630025",
+            appId: "1:1031238630025:web:4db27993f9c6e721966458"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Exportamos las herramientas necesarias al objeto global window
+        window.db = db;
+        window.auth = auth;
+        window.addDoc = addDoc;
+        window.collection = collection;
+        window.getDocs = getDocs;
+        window.deleteDoc = deleteDoc;
+        window.updateDoc = updateDoc;
+        window.setDoc = setDoc;
+        window.getDoc = getDoc;
+        window.doc = doc;
+        window.query = query;
+        window.orderBy = orderBy;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.sendEmailVerification = sendEmailVerification;
+        window.sendPasswordResetEmail = sendPasswordResetEmail;
+        window.GoogleAuthProvider = GoogleAuthProvider;
+        window.signInWithPopup = signInWithPopup;
+        window.signOut = signOut;
+        window.onAuthStateChanged = onAuthStateChanged;
+    </script>
+
+    <style>
+        :root {
+            --primary: #0D47A1;
+            --secondary: #00C853;
+            --dark: #0F172A;
+            --dark2: #1E293B;
+            --bg: #F1F5F9;
+            --white: #fff;
+            --gray: #94A3B8;
+            --gold: #D97706;
+            --accent-blue: #3B82F6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+            flex-direction: column;
+        }
+
+        /* LOGIN OVERLAY SYSTEM */
+        #login-section {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, var(--dark2) 30%, var(--dark) 100%);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            transition: all 0.5s ease;
+        }
+
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+            text-align: center;
+        }
+
+        .login-card img {
+            width: 110px;
+            margin-bottom: 20px;
+        }
+
+        .login-card h2 {
+            color: var(--dark);
+            margin-bottom: 10px;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .login-card p {
+            color: var(--gray);
+            font-size: 13px;
+            margin-bottom: 25px;
+        }
+
+        .auth-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 18px;
+            background: #EEF2FF;
+            padding: 6px;
+            border-radius: 12px;
+        }
+
+        .auth-tab {
+            border: none;
+            border-radius: 9px;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            background: transparent;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .auth-tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 3px 12px rgba(13, 71, 161, 0.16);
+        }
+
+        .auth-form {
+            display: none;
+            text-align: left;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .login-card label {
+            display: block;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--dark2);
+        }
+
+        .login-card input,
+        .login-card select {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 14px;
+            border: 2px solid #E2E8F0;
+            border-radius: 12px;
+            outline: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: 0.3s;
+            background-color: #F8FAFC;
+        }
+
+        .login-card input:focus,
+        .login-card select:focus {
+            border-color: var(--primary);
+        }
+
+        .auth-message {
+            margin-top: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            min-height: 18px;
+            text-align: left;
+        }
+
+        .auth-message.error {
+            color: #B91C1C;
+        }
+
+        .auth-message.success {
+            color: #166534;
+        }
+
+        .login-card .btn-login {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 4px 15px rgba(13, 71, 161, 0.4);
+        }
+
+        .login-card .btn-login:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+
+        /* ESTRUCTURA PRINCIPAL POST-LOGIN */
+        .wrapper {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        /* BARRA LATERAL (SIDEBAR) */
+        .sidebar {
+            width: 280px;
+            height: 100vh;
+            background: var(--dark);
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .logo {
+            padding: 25px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, .1);
+        }
+
+        .logo img {
+            width: 90px;
+            margin-bottom: 10px;
+        }
+
+        .logo h2 {
+            color: white;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .logo p {
+            color: #94A3B8;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .menu {
+            padding: 15px 0;
+        }
+
+        .menu a {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 13px 25px;
+            color: #CBD5E1;
+            text-decoration: none;
+            transition: .3s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .menu a:hover {
+            background: rgba(255, 255, 255, .05);
+            color: white;
+            border-left: 4px solid var(--secondary);
+        }
+
+        .menu a.active {
+            background: rgba(255, 255, 255, .08);
+            color: white;
+            border-left: 4px solid var(--secondary);
+            font-weight: 600;
+        }
+
+        /* ÁREA PRINCIPAL */
+        .main {
+            margin-left: 280px;
+            width: calc(100% - 280px);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: margin-left 0.3s ease, width 0.3s ease;
+        }
+
+        /* BARRA SUPERIOR (TOPBAR) */
+        .topbar {
+            height: 80px;
+            background: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .05);
+            position: sticky;
+            top: 0;
+            z-index: 900;
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--dark);
+            cursor: pointer;
+            margin-right: 15px;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .search {
+            background: #F1F5F9;
+            padding: 12px 20px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 350px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search input {
+            border: none;
+            background: none;
+            outline: none;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-badge {
+            background: var(--primary);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .logout-btn {
+            background: #EF4444;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #DC2626;
+        }
+
+        .content {
+            padding: 30px;
+            flex: 1;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* TARJETAS */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 18px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, .05);
+            position: relative;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .card h3 {
+            font-size: 14px;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .card h2 {
+            color: var(--primary);
+            margin-top: 10px;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .card p {
+            font-size: 12px;
+            color: var(--gray);
+            margin-top: 5px;
+        }
+
+        /* FORMULARIOS DE GESTIÓN */
+        .form-card {
+            background: white;
+            padding: 25px;
+            margin-top: 20px;
+            border-radius: 18px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, .05);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .form-card h3 {
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .form-card label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--dark2);
+            margin-top: 10px;
+            margin-bottom: 4px;
+        }
+
+        .form-card input,
+        .form-card textarea,
+        .form-card select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: 0.3s;
+            background: #F8FAFC;
+        }
+
+        .form-card input:focus,
+        .form-card textarea:focus,
+        .form-card select:focus {
+            border-color: var(--primary);
+            background: white;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.3s;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-cancel {
+            background: #64748B;
+            margin-left: 10px;
+        }
+
+        /* TABLAS RESPONSIVE */
+        .table-card {
+            background: white;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 18px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, .05);
+            overflow-x: auto;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        th {
+            background: var(--primary);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 500;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #E2E8F0;
+            font-size: 14px;
+            color: var(--dark2);
+        }
+
+        .delete-btn {
+            background: #EF4444;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 12px;
+        }
+
+        .delete-btn:hover {
+            background: #DC2626;
+        }
+
+        .edit-btn {
+            background: var(--gold);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-right: 5px;
+            font-size: 12px;
+        }
+
+        .edit-btn:hover {
+            background: #B45309;
+        }
+
+        /* ACCIONES EN BIBLIOTECA */
+        .library-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* ASISTENTE CHAT */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 180px);
+            background: white;
+            border-radius: 18px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, .05);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            background: var(--dark);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-header img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            padding: 3px;
+        }
+
+        .chat-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #F8FAFC;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .chat-bubble {
+            max-width: 75%;
+            padding: 12px 18px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .chat-bubble.user {
+            background: var(--primary);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-bubble.assistant {
+            background: white;
+            color: var(--dark);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #E2E8F0;
+        }
+
+        .chat-input-bar {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #E2E8F0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input-bar input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .chat-input-bar input:focus {
+            border-color: var(--primary);
+        }
+
+        /* OVERLAYS Y MENUS EN MOVIL */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 950;
+        }
+
+        /* ELEMENTO RESPONSIVO */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-overlay.show {
+                display: block;
+            }
+
+            .main {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            .topbar {
+                padding: 0 20px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .topbar {
+                height: auto;
+                padding: 15px;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 15px;
+            }
+
+            .topbar-left {
+                width: 100%;
+                order: 2;
+            }
+
+            .search {
+                max-width: 100%;
+            }
+
+            .topbar-right {
+                width: 100%;
+                order: 1;
+                justify-content: space-between;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .chat-bubble {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SECCIÓN DE ACCESO / LOGIN (ROLES) -->
+    <div id="login-section">
+        <div class="login-card">
+            <img src="img/logo.svg" alt="Logo Colegio">
+            <h2>San Andres College</h2>
+            <p>Asistente Inteligente y Gestión Académica</p>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-login" onclick="setAuthMode('login')">Iniciar sesión</button>
+                <button class="auth-tab" id="tab-register" onclick="setAuthMode('register')">Registrarse</button>
+            </div>
+
+            <div class="auth-form active" id="login-form">
+                <label for="login-email">Correo electrónico</label>
+                <input type="email" id="login-email" placeholder="correo@colegio.edu.pe">
+
+                <label for="login-password">Contraseña</label>
+                <input type="password" id="login-password" placeholder="Ingrese su contraseña">
+
+                <button class="btn-login" onclick="realizarLogin()">Ingresar al Sistema</button>
+                <button class="btn-login" type="button" style="margin-top:10px; background:#1D4ED8;" onclick="loginConGoogle()">Ingresar con Google</button>
+                <button class="btn-login" type="button" style="margin-top:10px; background:#334155;" onclick="recuperarContrasena()">Recuperar contraseña</button>
+            </div>
+
+            <div class="auth-form" id="register-form">
+                <label for="register-name">Nombre completo</label>
+                <input type="text" id="register-name" placeholder="Ej: Ana Pérez Gómez">
+
+                <label for="register-email">Correo electrónico</label>
+                <input type="email" id="register-email" placeholder="correo@colegio.edu.pe">
+
+                <label for="register-role">Perfil</label>
+                <select id="register-role">
+                    <option value="Estudiante">Estudiante</option>
+                    <option value="Padre de Familia">Padre de Familia</option>
+                </select>
+
+                <p style="margin-top:-6px; margin-bottom:12px; font-size:11px; color:#64748B;">El perfil Administrador se habilita solo por configuracion interna.</p>
+
+                <label for="register-password">Contraseña</label>
+                <input type="password" id="register-password" placeholder="Mínimo 6 caracteres">
+
+                <button class="btn-login" onclick="registrarUsuario()">Crear cuenta</button>
+            </div>
+
+            <div class="auth-message" id="auth-message"></div>
+        </div>
+    </div>
+
+    <!-- WRAPPER PRINCIPAL POST-LOGIN -->
+    <div class="wrapper" id="app-wrapper" style="display:none;">
+
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+        <div class="sidebar" id="sidebar">
+            <div class="logo">
+                <img src="img/logo.svg" alt="Logo">
+                <h2>San Andres</h2>
+                <p>Asistente Inteligente</p>
+            </div>
+            <div class="menu">
+                <a href="#" class="menu-link active" onclick="showSection('dashboard', this)"><i class="fas fa-home"></i> <span>Dashboard</span></a>
+                <a href="#" class="menu-link" onclick="showSection('estudiantes', this)"><i class="fas fa-user-graduate"></i> <span>Estudiantes</span></a>
+                <a href="#" class="menu-link" onclick="showSection('docentes', this)"><i class="fas fa-chalkboard-teacher"></i> <span>Docentes</span></a>
+                <a href="#" class="menu-link" onclick="showSection('padres', this)"><i class="fas fa-users"></i> <span>Padres</span></a>
+                <a href="#" class="menu-link" onclick="showSection('actividades', this)"><i class="fas fa-calendar"></i> <span>Actividades</span></a>
+                <a href="#" class="menu-link" onclick="showSection('biblioteca', this)"><i class="fas fa-book"></i> <span>Biblioteca</span></a>
+                <a href="#" class="menu-link" onclick="showSection('comunicados', this)"><i class="fas fa-bullhorn"></i> <span>Comunicados</span></a>
+                <a href="#" class="menu-link" onclick="showSection('academico', this)"><i class="fas fa-graduation-cap"></i> <span>Gestión Académica</span></a>
+                <a href="#" class="menu-link" onclick="showSection('reportes', this)"><i class="fas fa-chart-bar"></i> <span>Estadísticas</span></a>
+                <a href="#" class="menu-link" id="menu-usuarios" onclick="showSection('usuarios', this)"><i class="fas fa-user-shield"></i> <span>Usuarios</span></a>
+                <a href="#" class="menu-link" onclick="showSection('ia', this)"><i class="fas fa-robot"></i> <span>Asistente IA</span></a>
+            </div>
+        </div>
+
+        <div class="main">
+            <div class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="search">
+                        <i class="fas fa-search" style="color:var(--gray);"></i>
+                        <input type="text" id="globalSearch" placeholder="Buscar..." oninput="filtrarContenidoGlobal()">
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <span class="user-badge" id="rol-badge">Administrador</span>
+                    <span id="user-name" style="font-size:12px; color:#334155; font-weight:600;">Usuario</span>
+                    <button class="logout-btn" onclick="realizarLogout()"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </div>
+
+            <div class="content">
+                
+                <!-- 1. DASHBOARD PRINCIPAL -->
+                <section id="dashboard" class="section active">
+                    <h1>Panel Principal</h1>
+                    <p style="margin-top:10px;color:#64748B;">Bienvenido al Sistema de Gestión Inteligente de San Andres College</p>
+                    
+                    <div class="cards">
+                        <div class="card">
+                            <h3>Estudiantes</h3>
+                            <h2 id="studentsCount">0</h2>
+                            <p>Registrados en el año 2026</p>
+                        </div>
+                        <div class="card">
+                            <h3>Docentes</h3>
+                            <h2 id="teachersCount">0</h2>
+                            <p>Plana docente activa</p>
+                        </div>
+                        <div class="card">
+                            <h3>Padres</h3>
+                            <h2 id="parentsCount">0</h2>
+                            <p>Familias integradas</p>
+                        </div>
+                        <div class="card">
+                            <h3>Actividades</h3>
+                            <h2 id="activitiesCount">0</h2>
+                            <p>Eventos programados</p>
+                        </div>
+                    </div>
+                    
+                    <div class="cards">
+                        <div class="card">
+                            <h3 style="margin-bottom:15px;">Consultas al Asistente IA (Mensual)</h3>
+                            <canvas id="chart1"></canvas>
+                        </div>
+                        <div class="card">
+                            <h3 style="margin-bottom:15px;">Distribución de Usuarios</h3>
+                            <canvas id="chart2"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. GESTIÓN DE ESTUDIANTES -->
+                <section id="estudiantes" class="section">
+                    <h1>Gestión de Estudiantes</h1>
+                    <div class="form-card" id="form-estudiantes-container">
+                        <h3 id="studentFormTitle">Registrar Estudiante</h3>
+                        <input type="hidden" id="studentId">
+                        
+                        <label>Nombre Completo</label>
+                        <input type="text" id="studentName" placeholder="Nombre completo">
+                        
+                        <label>Correo Electrónico</label>
+                        <input type="email" id="studentEmail" placeholder="Correo electrónico">
+                        
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                            <div>
+                                <label>Grado</label>
+                                <input type="text" id="studentGrade" placeholder="Ej: 5to de Secundaria">
+                            </div>
+                            <div>
+                                <label>Sección</label>
+                                <input type="text" id="studentSection" placeholder="Ej: A">
+                            </div>
+                        </div>
+                        
+                        <button class="btn" id="btnSaveStudent" onclick="saveStudent()"><i class="fas fa-save"></i> Guardar Estudiante</button>
+                        <button class="btn btn-cancel" id="btnCancelStudent" style="display:none;" onclick="clearStudentForm()">Cancelar</button>
+                    </div>
+                    <div class="table-card">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Correo</th>
+                                    <th>Grado</th>
+                                    <th>Sección</th>
+                                    <th class="col-actions">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsTable"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 3. GESTIÓN DE DOCENTES -->
+                <section id="docentes" class="section">
+                    <h1>Gestión de Docentes</h1>
+                    <div class="form-card" id="form-docentes-container">
+                        <h3 id="teacherFormTitle">Registrar Docente</h3>
+                        <input type="hidden" id="teacherId">
+                        
+                        <label>Nombre Completo</label>
+                        <input type="text" id="teacherName" placeholder="Nombre completo">
+                        
+                        <label>Especialidad / Curso</label>
+                        <input type="text" id="teacherSpecialty" placeholder="Especialidad">
+                        
+                        <label>Correo Electrónico</label>
+                        <input type="email" id="teacherEmail" placeholder="Correo electrónico">
+                        
+                        <button class="btn" id="btnSaveTeacher" onclick="saveTeacher()"><i class="fas fa-save"></i> Guardar Docente</button>
+                        <button class="btn btn-cancel" id="btnCancelTeacher" style="display:none;" onclick="clearTeacherForm()">Cancelar</button>
+                    </div>
+                    <div class="table-card">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Especialidad</th>
+                                    <th>Correo</th>
+                                    <th class="col-actions">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teachersTable"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 4. GESTIÓN DE PADRES DE FAMILIA -->
+                <section id="padres" class="section">
+                    <h1>Gestión de Padres de Familia</h1>
+                    <div class="form-card" id="form-padres-container">
+                        <h3 id="parentFormTitle">Registrar Padre o Apoderado</h3>
+                        <input type="hidden" id="parentId">
+                        
+                        <label>Nombre Completo</label>
+                        <input type="text" id="parentName" placeholder="Nombre completo">
+                        
+                        <label>Teléfono de Contacto</label>
+                        <input type="text" id="parentPhone" placeholder="Teléfono">
+                        
+                        <label>Correo Electrónico</label>
+                        <input type="email" id="parentEmail" placeholder="Correo electrónico">
+                        
+                        <button class="btn" id="btnSaveParent" onclick="saveParent()"><i class="fas fa-save"></i> Guardar Padre</button>
+                        <button class="btn btn-cancel" id="btnCancelParent" style="display:none;" onclick="clearParentForm()">Cancelar</button>
+                    </div>
+                    <div class="table-card">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Teléfono</th>
+                                    <th>Correo</th>
+                                    <th class="col-actions">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="parentsTable"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 5. GESTIÓN DE ACTIVIDADES -->
+                <section id="actividades" class="section">
+                    <h1>Gestión de Actividades</h1>
+                    <div class="form-card" id="form-actividades-container">
+                        <h3 id="activityFormTitle">Registrar Actividad</h3>
+                        <input type="hidden" id="activityId">
+                        
+                        <label>Título de la Actividad</label>
+                        <input type="text" id="activityTitle" placeholder="Título de la actividad">
+                        
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                            <div>
+                                <label>Fecha</label>
+                                <input type="date" id="activityDate">
+                            </div>
+                            <div>
+                                <label>Hora</label>
+                                <input type="time" id="activityTime">
+                            </div>
+                        </div>
+                        
+                        <label>Descripción</label>
+                        <textarea id="activityDescription" placeholder="Detalle e información adicional de la actividad"></textarea>
+                        
+                        <button class="btn" id="btnSaveActivity" onclick="saveActivity()"><i class="fas fa-save"></i> Registrar Actividad</button>
+                        <button class="btn btn-cancel" id="btnCancelActivity" style="display:none;" onclick="clearActivityForm()">Cancelar</button>
+                    </div>
+                    <div class="table-card">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Fecha</th>
+                                    <th>Hora</th>
+                                    <th class="col-actions">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activitiesTable"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 6. BIBLIOTECA VIRTUAL -->
+                <section id="biblioteca" class="section">
+                    <h1>Biblioteca Virtual</h1>
+                    <div class="form-card" id="form-biblioteca-container">
+                        <h3 id="libraryFormTitle">Añadir Recurso a la Biblioteca</h3>
+                        <input type="hidden" id="libraryId">
+                        
+                        <label>Título del Libro o Recurso</label>
+                        <input type="text" id="libraryTitle" placeholder="Título del libro o documento">
+                        
+                        <label>Categoría</label>
+                        <select id="libraryCategory">
+                            <option value="Libros">Libros Académicos</option>
+                            <option value="Documentos">Reglamentos y Documentos</option>
+                            <option value="Multimedia">Material Audiovisual</option>
+                        </select>
+                        
+                        <label>Enlace / URL de Descarga</label>
+                        <input type="url" id="libraryUrl" placeholder="https://ejemplo.com/archivo.pdf">
+                        
+                        <button class="btn" id="btnSaveLibrary" onclick="saveLibrary()"><i class="fas fa-save"></i> Guardar Recurso</button>
+                        <button class="btn btn-cancel" id="btnCancelLibrary" style="display:none;" onclick="clearLibraryForm()">Cancelar</button>
+                    </div>
+                    <div class="cards" id="libraryContainer" style="margin-top: 30px;"></div>
+                </section>
+
+                <!-- 7. COMUNICADOS INSTITUCIONALES -->
+                <section id="comunicados" class="section">
+                    <h1>Comunicados Institucionales</h1>
+                    <div class="form-card" id="form-comunicados-container">
+                        <h3 id="noticeFormTitle">Publicar Comunicado</h3>
+                        <input type="hidden" id="noticeId">
+                        
+                        <label>Título del Comunicado</label>
+                        <input type="text" id="noticeTitle" placeholder="Ej: Suspensión de actividades por feriado">
+                        
+                        <label>Mensaje del Comunicado</label>
+                        <textarea id="noticeMessage" placeholder="Redacte el mensaje de interés general para la comunidad estudiantil"></textarea>
+                        
+                        <button class="btn" id="btnSaveNotice" onclick="saveNotice()"><i class="fas fa-bullhorn"></i> Publicar Comunicado</button>
+                        <button class="btn btn-cancel" id="btnCancelNotice" style="display:none;" onclick="clearNoticeForm()">Cancelar</button>
+                    </div>
+                    <div class="table-card">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Mensaje</th>
+                                    <th class="col-actions">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="noticesTable"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 8. GESTIÓN ACADÉMICA (HORARIOS Y EVALUACIONES) -->
+                <section id="academico" class="section">
+                    <h1>Gestión Académica</h1>
+                    <p style="margin-top:10px;color:#64748B;">Módulo de control de Horarios de Clase y Evaluaciones/Exámenes.</p>
+                    
+                    <div class="cards">
+                        <!-- Formulario de Horarios -->
+                        <div class="form-card" id="form-horarios-container">
+                            <h3 id="scheduleFormTitle">Programar Horario</h3>
+                            <input type="hidden" id="scheduleId">
+                            
+                            <label>Curso</label>
+                            <input type="text" id="scheduleCourse" placeholder="Ej: Matemáticas">
+                            
+                            <label>Día de la Semana</label>
+                            <select id="scheduleDay">
+                                <option value="Lunes">Lunes</option>
+                                <option value="Martes">Martes</option>
+                                <option value="Miércoles">Miércoles</option>
+                                <option value="Jueves">Jueves</option>
+                                <option value="Viernes">Viernes</option>
+                            </select>
+                            
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                                <div>
+                                    <label>Hora Inicio</label>
+                                    <input type="time" id="scheduleStart">
+                                </div>
+                                <div>
+                                    <label>Hora Fin</label>
+                                    <input type="time" id="scheduleEnd">
+                                </div>
+                            </div>
+                            
+                            <label>Aula</label>
+                            <input type="text" id="scheduleRoom" placeholder="Ej: Aula 102 - 5to Grado">
+                            
+                            <button class="btn" id="btnSaveSchedule" onclick="saveSchedule()"><i class="fas fa-save"></i> Guardar Horario</button>
+                            <button class="btn btn-cancel" id="btnCancelSchedule" style="display:none;" onclick="clearScheduleForm()">Cancelar</button>
+                        </div>
+
+                        <!-- Formulario de Evaluaciones -->
+                        <div class="form-card" id="form-evaluaciones-container">
+                            <h3 id="evalFormTitle">Programar Evaluación</h3>
+                            <input type="hidden" id="evalId">
+                            
+                            <label>Curso</label>
+                            <input type="text" id="evalCourse" placeholder="Ej: Comunicación">
+                            
+                            <label>Fecha de Evaluación</label>
+                            <input type="date" id="evalDate">
+                            
+                            <label>Descripción / Temario</label>
+                            <textarea id="evalDescription" placeholder="Ej: Examen Bimestral, temas: 1 al 4"></textarea>
+                            
+                            <button class="btn" id="btnSaveEval" onclick="saveEval()"><i class="fas fa-save"></i> Guardar Evaluación</button>
+                            <button class="btn btn-cancel" id="btnCancelEval" style="display:none;" onclick="clearEvalForm()">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <div class="cards">
+                        <!-- Tabla Horarios -->
+                        <div class="table-card" style="width:100%;">
+                            <h3 style="margin-bottom:15px; color:var(--primary);"><i class="fas fa-clock"></i> Horarios Registrados</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Curso</th>
+                                        <th>Día</th>
+                                        <th>Hora</th>
+                                        <th>Aula</th>
+                                        <th class="col-actions">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="schedulesTable"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Tabla Evaluaciones -->
+                        <div class="table-card" style="width:100%;">
+                            <h3 style="margin-bottom:15px; color:var(--primary);"><i class="fas fa-file-alt"></i> Próximas Evaluaciones</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Curso</th>
+                                        <th>Fecha</th>
+                                        <th>Detalles</th>
+                                        <th class="col-actions">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="evalsTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 9. REPORTES Y ESTADÍSTICAS (HISTORIAL CONSULTAS) -->
+                <section id="reportes" class="section">
+                    <h1>Panel de Estadísticas</h1>
+                    <p style="margin-top:10px;color:#64748B;">Métricas reales de los módulos y consultas registradas por los usuarios de la IA.</p>
+                    
+                    <div class="cards">
+                        <div class="card">
+                            <h3>Total Estudiantes</h3>
+                            <h2 id="reportStudents">0</h2>
+                        </div>
+                        <div class="card">
+                            <h3>Total Docentes</h3>
+                            <h2 id="reportTeachers">0</h2>
+                        </div>
+                        <div class="card">
+                            <h3>Total Padres</h3>
+                            <h2 id="reportParents">0</h2>
+                        </div>
+                        <div class="card">
+                            <h3>Total Actividades</h3>
+                            <h2 id="reportActivities">0</h2>
+                        </div>
+                    </div>
+
+                    <div class="table-card" style="margin-top:30px;">
+                        <h3 style="margin-bottom:15px; color:var(--primary);"><i class="fas fa-history"></i> Historial de Consultas de IA</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Pregunta Realizada</th>
+                                    <th>Fecha y Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTable">
+                                <tr>
+                                    <td colspan="3" style="text-align:center; color:var(--gray);">Cargando historial...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-card" style="margin-top: 30px;">
+                        <h3 style="margin-bottom:15px; color:var(--primary);"><i class="fas fa-chart-line"></i> Tendencia General de Actividad</h3>
+                        <canvas id="chart3" style="max-height:280px;"></canvas>
+                    </div>
+                </section>
+
+                <!-- 10. ADMINISTRACION DE USUARIOS -->
+                <section id="usuarios" class="section">
+                    <h1>Administración de Usuarios</h1>
+                    <p style="margin-top:10px;color:#64748B;">Gestiona perfiles y promociona cuentas a Administrador de forma controlada.</p>
+                    <div class="table-card" style="margin-top:20px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Correo</th>
+                                    <th>Rol</th>
+                                    <th>Verificado</th>
+                                    <th class="col-actions">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersAdminTable"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 11. ASISTENTE INTELIGENTE IA (GROQ) -->
+                <section id="ia" class="section">
+                    <h1>Asistente Inteligente</h1>
+                    <p style="margin-top:10px;color:#64748B;">Pregunta sobre el colegio, horarios, comunicados, biblioteca o actividades institucionales.</p>
+                    
+                    <div class="chat-container" style="margin-top:20px;">
+                        <div class="chat-header">
+                            <img src="img/logo.svg" alt="Logo Colegio">
+                            <div>
+                                <h3 style="color:white; font-size:16px;">Sofía - Asistente IA</h3>
+                                <p style="color:#A5F3FC; font-size:11px;">En línea • San Andres College</p>
+                            </div>
+                        </div>
+                        
+                        <div class="chat-area" id="chatArea">
+                            <div class="chat-bubble assistant">
+                                Hola, soy Sofía, el asistente de gestión educativa e institucional de San Andres. ¿En qué te puedo ayudar hoy?
+                            </div>
+                        </div>
+                        
+                        <div class="chat-input-bar">
+                            <input type="text" id="question" placeholder="Escribe tu consulta aquí... (Ej: ¿Cuándo es el examen?)" onkeypress="if(event.key === 'Enter') sendQuestion()">
+                            <button class="btn" onclick="sendQuestion()"><i class="fas fa-paper-plane"></i> Enviar</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================
+           SISTEMA DE AUTENTICACIÓN / ROLES
+        ========================== */
+        const LOGIN_ATTEMPTS_KEY = "sa_login_attempts";
+        const MAX_LOGIN_ATTEMPTS = 5;
+        const BLOCK_TIME_MINUTES = 15;
+
+        let ROL_ACTIVO = "Administrador";
+        let USUARIO_ACTIVO = "";
+        let APP_CARGADA = false;
+        let usersAdmin = [];
+
+        function setAuthMode(mode) {
+            const loginTab = document.getElementById('tab-login');
+            const registerTab = document.getElementById('tab-register');
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+
+            const isLogin = mode === 'login';
+            loginTab.classList.toggle('active', isLogin);
+            registerTab.classList.toggle('active', !isLogin);
+            loginForm.classList.toggle('active', isLogin);
+            registerForm.classList.toggle('active', !isLogin);
+            setAuthMessage('');
+        }
+
+        function setAuthMessage(message, type = '') {
+            const msg = document.getElementById('auth-message');
+            msg.textContent = message;
+            msg.className = 'auth-message';
+            if (type) msg.classList.add(type);
+        }
+
+        function getLoginAttempts() {
+            const raw = localStorage.getItem(LOGIN_ATTEMPTS_KEY);
+            return raw ? JSON.parse(raw) : {};
+        }
+
+        function saveLoginAttempts(data) {
+            localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(data));
+        }
+
+        function getLockStatus(email) {
+            const attempts = getLoginAttempts();
+            const userAttempts = attempts[email] || { failCount: 0, blockedUntil: 0 };
+            const now = Date.now();
+            if (userAttempts.blockedUntil && now < userAttempts.blockedUntil) {
+                const minutesLeft = Math.ceil((userAttempts.blockedUntil - now) / 60000);
+                return { blocked: true, minutesLeft };
+            }
+            return { blocked: false, minutesLeft: 0 };
+        }
+
+        function registerLoginFailure(email) {
+            const attempts = getLoginAttempts();
+            const current = attempts[email] || { failCount: 0, blockedUntil: 0 };
+            current.failCount += 1;
+
+            if (current.failCount >= MAX_LOGIN_ATTEMPTS) {
+                current.blockedUntil = Date.now() + BLOCK_TIME_MINUTES * 60 * 1000;
+                current.failCount = 0;
+            }
+
+            attempts[email] = current;
+            saveLoginAttempts(attempts);
+
+            if (current.blockedUntil && Date.now() < current.blockedUntil) {
+                return { blocked: true, remaining: 0, minutesLeft: BLOCK_TIME_MINUTES };
+            }
+
+            return { blocked: false, remaining: Math.max(0, MAX_LOGIN_ATTEMPTS - current.failCount), minutesLeft: 0 };
+        }
+
+        function clearLoginFailures(email) {
+            const attempts = getLoginAttempts();
+            if (attempts[email]) {
+                delete attempts[email];
+                saveLoginAttempts(attempts);
+            }
+        }
+
+        function mostrarPantallaLogin() {
+            document.getElementById("app-wrapper").style.display = "none";
+            document.getElementById("login-section").style.display = "flex";
+            document.getElementById('rol-badge').innerText = 'Invitado';
+            document.getElementById('user-name').innerText = 'Sin sesión';
+            document.getElementById('login-password').value = '';
+            setAuthMode('login');
+        }
+
+        async function registrarUsuario() {
+            const nombre = document.getElementById('register-name').value.trim();
+            const email = document.getElementById('register-email').value.trim().toLowerCase();
+            const rol = document.getElementById('register-role').value;
+            const password = document.getElementById('register-password').value;
+
+            if (rol === 'Administrador') {
+                setAuthMessage('No se permite registrar Administrador desde este formulario.', 'error');
+                return;
+            }
+
+            if (!nombre || !email || !password) {
+                setAuthMessage('Completa todos los campos para registrarte.', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                setAuthMessage('La contraseña debe tener al menos 6 caracteres.', 'error');
+                return;
+            }
+
+            try {
+                const cred = await window.createUserWithEmailAndPassword(window.auth, email, password);
+
+                await window.setDoc(window.doc(window.db, "usuarios", cred.user.uid), {
+                    nombre,
+                    email,
+                    rol,
+                    creadoEn: new Date().toISOString()
+                });
+
+                await window.sendEmailVerification(cred.user);
+                await window.signOut(window.auth);
+
+                document.getElementById('register-name').value = '';
+                document.getElementById('register-email').value = '';
+                document.getElementById('register-password').value = '';
+                document.getElementById('register-role').value = 'Estudiante';
+
+                setAuthMode('login');
+                document.getElementById('login-email').value = email;
+                setAuthMessage('Cuenta creada. Te enviamos un codigo/enlace de verificacion al correo.', 'success');
+            } catch (error) {
+                if (error.code === 'auth/email-already-in-use') {
+                    setAuthMessage('Ese correo ya esta registrado. Inicia sesion.', 'error');
+                    return;
+                }
+                if (error.code === 'auth/invalid-email') {
+                    setAuthMessage('El correo no tiene un formato valido.', 'error');
+                    return;
+                }
+                if (error.code === 'auth/weak-password') {
+                    setAuthMessage('Contrasena debil. Usa al menos 6 caracteres.', 'error');
+                    return;
+                }
+                setAuthMessage('No se pudo registrar. Revisa configuracion de Firebase Auth.', 'error');
+                console.error('Error de registro:', error);
+            }
+        }
+
+        async function realizarLogin() {
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
+            const password = document.getElementById('login-password').value;
+
+            if (!email || !password) {
+                setAuthMessage('Ingresa correo y contraseña.', 'error');
+                return;
+            }
+
+            const lockStatus = getLockStatus(email);
+            if (lockStatus.blocked) {
+                setAuthMessage(`Cuenta temporalmente bloqueada. Intenta en ${lockStatus.minutesLeft} minuto(s).`, 'error');
+                return;
+            }
+
+            try {
+                const cred = await window.signInWithEmailAndPassword(window.auth, email, password);
+
+                if (!cred.user.emailVerified) {
+                    await window.sendEmailVerification(cred.user);
+                    await window.signOut(window.auth);
+                    setAuthMessage('Tu correo aun no esta verificado. Te reenviamos codigo/enlace.', 'error');
+                    return;
+                }
+
+                clearLoginFailures(email);
+                localStorage.setItem('seccion_activa', 'dashboard');
+                setAuthMessage('Ingreso correcto. Cargando panel...', 'success');
+            } catch (error) {
+                if (error.code === 'auth/invalid-credential') {
+                    const fail = registerLoginFailure(email);
+                    if (fail.blocked) {
+                        setAuthMessage(`Demasiados intentos fallidos. Bloqueado por ${BLOCK_TIME_MINUTES} minutos.`, 'error');
+                        return;
+                    }
+                    setAuthMessage(`Credenciales invalidas. Intentos restantes: ${fail.remaining}.`, 'error');
+                    return;
+                }
+                if (error.code === 'auth/too-many-requests') {
+                    setAuthMessage('Demasiados intentos. Espera unos minutos.', 'error');
+                    return;
+                }
+                setAuthMessage('No se pudo iniciar sesion. Revisa configuracion de Firebase Auth.', 'error');
+                console.error('Error de login:', error);
+            }
+        }
+
+        async function recuperarContrasena() {
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
+
+            if (!email) {
+                setAuthMessage('Escribe tu correo en el campo de login para recuperar la contraseña.', 'error');
+                return;
+            }
+
+            try {
+                await window.sendPasswordResetEmail(window.auth, email);
+                setAuthMessage('Te enviamos un enlace de recuperacion al correo.', 'success');
+            } catch (error) {
+                if (error.code === 'auth/invalid-email') {
+                    setAuthMessage('El correo no tiene un formato valido.', 'error');
+                    return;
+                }
+                if (error.code === 'auth/user-not-found') {
+                    setAuthMessage('No existe una cuenta con ese correo.', 'error');
+                    return;
+                }
+                setAuthMessage('No se pudo enviar el correo de recuperacion.', 'error');
+                console.error('Error en recuperacion de contraseña:', error);
+            }
+        }
+
+        async function loginConGoogle() {
+            try {
+                const provider = new window.GoogleAuthProvider();
+                const cred = await window.signInWithPopup(window.auth, provider);
+                const user = cred.user;
+
+                const perfilRef = window.doc(window.db, "usuarios", user.uid);
+                const perfilSnap = await window.getDoc(perfilRef);
+
+                if (!perfilSnap.exists()) {
+                    await window.setDoc(perfilRef, {
+                        nombre: user.displayName || user.email || 'Usuario',
+                        email: user.email || '',
+                        rol: 'Estudiante',
+                        verificadoCorreo: true,
+                        creadoEn: new Date().toISOString()
+                    });
+                }
+
+                if (user.email) {
+                    clearLoginFailures(user.email.toLowerCase());
+                }
+                localStorage.setItem('seccion_activa', 'dashboard');
+            } catch (error) {
+                setAuthMessage('No se pudo iniciar sesion con Google.', 'error');
+                console.error('Error login Google:', error);
+            }
+        }
+
+        async function obtenerPerfilUsuario(user) {
+            const perfilRef = window.doc(window.db, "usuarios", user.uid);
+            const perfilSnap = await window.getDoc(perfilRef);
+
+            if (perfilSnap.exists()) {
+                return perfilSnap.data();
+            }
+
+            const perfilMinimo = {
+                nombre: user.email || 'Usuario',
+                email: user.email || '',
+                rol: 'Estudiante',
+                verificadoCorreo: !!user.emailVerified,
+                creadoEn: new Date().toISOString()
+            };
+            await window.setDoc(perfilRef, perfilMinimo);
+            return perfilMinimo;
+        }
+
+        async function activarSesionFirebase(user) {
+            const perfil = await obtenerPerfilUsuario(user);
+            ROL_ACTIVO = perfil.rol || 'Estudiante';
+            USUARIO_ACTIVO = perfil.nombre || user.email || 'Usuario';
+
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('app-wrapper').style.display = 'flex';
+            document.getElementById('rol-badge').innerText = ROL_ACTIVO;
+            document.getElementById('user-name').innerText = USUARIO_ACTIVO;
+
+            // Restringir visibilidad de formularios para no administradores
+            configurarVistasPorRol();
+
+            if (!APP_CARGADA && typeof window.initApp === 'function') {
+                await window.initApp();
+                APP_CARGADA = true;
+            }
+
+            try {
+                await window.updateDoc(window.doc(window.db, "usuarios", user.uid), {
+                    verificadoCorreo: !!user.emailVerified
+                });
+            } catch (e) {
+                console.error('No se pudo actualizar estado de verificacion:', e);
+            }
+
+            const savedSection = localStorage.getItem('seccion_activa') || 'dashboard';
+            const targetLink = Array.from(document.querySelectorAll('.menu-link'))
+                .find(link => link.getAttribute('onclick').includes(`'${savedSection}'`));
+            showSection(savedSection, targetLink || document.querySelector('.menu-link'));
+
+            setAuthMessage('');
+        }
+
+        /* ========================================================
+           SISTEMA DE PERSISTENCIA (EVITA REINICIOS) Y PULL-TO-REFRESH
+        ======================================================== */
+
+        window.addEventListener('DOMContentLoaded', () => {
+            mostrarPantallaLogin();
+            window.onAuthStateChanged(window.auth, async (user) => {
+                if (user && user.emailVerified) {
+                    await activarSesionFirebase(user);
+                    return;
+                }
+                mostrarPantallaLogin();
+            });
+        });
+
+        // 2. Control de deslizamiento hacia abajo (Pull-to-refresh en Móvil)
+        let touchStartClientY = 0;
+
+        window.addEventListener('touchstart', (e) => {
+            // Solo rastrear si el usuario está en la parte superior de la página
+            if (window.scrollY === 0) {
+                touchStartClientY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (window.scrollY === 0 && touchStartClientY > 0) {
+                const touchCurrentClientY = e.touches[0].clientY;
+                const touchSwipeLength = touchCurrentClientY - touchStartClientY;
+                
+                // Si desliza hacia abajo más de 150px, actualiza de forma nativa
+                if (touchSwipeLength > 150) {
+                    touchStartClientY = 0; // Resetear
+                    location.reload();
+                }
+            }
+        }, { passive: true });
+
+        async function realizarLogout() {
+            await window.signOut(window.auth);
+            localStorage.removeItem('seccion_activa');
+            mostrarPantallaLogin();
+        }
+
+        function configurarVistasPorRol() {
+            const containers = [
+                'form-estudiantes-container',
+                'form-docentes-container',
+                'form-padres-container',
+                'form-actividades-container',
+                'form-biblioteca-container',
+                'form-comunicados-container',
+                'form-horarios-container',
+                'form-evaluaciones-container'
+            ];
+
+            const colsActions = document.querySelectorAll('.col-actions');
+            const adminMenu = document.getElementById('menu-usuarios');
+
+            if (ROL_ACTIVO === "Administrador") {
+                containers.forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.style.display = "block";
+                });
+                colsActions.forEach(el => el.style.display = "");
+                if (adminMenu) adminMenu.style.display = "flex";
+            } else {
+                // Estudiante o Padre de Familia
+                containers.forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.style.display = "none";
+                });
+                colsActions.forEach(el => el.style.display = "none");
+                if (adminMenu) adminMenu.style.display = "none";
+            }
+        }
+
+        /* ==========================
+           NAVEGACIÓN Y ADAPTABILIDAD
+        ========================== */
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('show');
+        }
+
+        function showSection(sectionId, element) {
+            if (sectionId === 'usuarios' && ROL_ACTIVO !== 'Administrador') return;
+
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+            localStorage.setItem('seccion_activa', sectionId);
+
+            if (sectionId === 'usuarios') {
+                loadUsersAdmin();
+            }
+
+            document.querySelectorAll('.menu-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            if(element) element.classList.add('active');
+
+            const searchInput = document.getElementById('globalSearch');
+            if (searchInput) {
+                searchInput.value = '';
+                filtrarContenidoGlobal();
+            }
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('show');
+            }
+        }
+
+        /* ==========================
+           ARRAYS DE CONTROL LOCAL
+        ========================== */
+        let students = [];
+        let teachers = [];
+        let parents = [];
+        let activities = [];
+        let library = [];
+        let notices = [];
+        let schedules = [];
+        let evals = [];
+
+        // Variables globales para instancias de Chart.js
+        let myChart1, myChart2, myChart3;
+
+        /* ==========================
+           MÓDULO: ADMINISTRACIÓN DE USUARIOS
+        ========================== */
+        async function loadUsersAdmin() {
+            if (ROL_ACTIVO !== 'Administrador') return;
+
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "usuarios"));
+                usersAdmin = [];
+                querySnapshot.forEach((d) => {
+                    const data = d.data();
+                    usersAdmin.push({
+                        uid: d.id,
+                        nombre: data.nombre || 'Usuario',
+                        email: data.email || '',
+                        rol: data.rol || 'Estudiante',
+                        verificadoCorreo: !!data.verificadoCorreo
+                    });
+                });
+                renderUsersAdmin();
+            } catch (e) {
+                console.error('Error cargando usuarios:', e);
+            }
+        }
+
+        function renderUsersAdmin() {
+            const table = document.getElementById('usersAdminTable');
+            if (!table) return;
+
+            table.innerHTML = '';
+            if (usersAdmin.length === 0) {
+                table.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray);">No hay usuarios registrados.</td></tr>';
+                return;
+            }
+
+            usersAdmin.forEach((u) => {
+                const puedePromover = u.rol !== 'Administrador';
+                const esActual = u.email && u.email.toLowerCase() === (window.auth.currentUser?.email || '').toLowerCase();
+                table.innerHTML += `
+                    <tr>
+                        <td>${u.nombre}</td>
+                        <td>${u.email}</td>
+                        <td>${u.rol}</td>
+                        <td>${u.verificadoCorreo ? 'Si' : 'No'}</td>
+                        <td class="col-actions">
+                            ${puedePromover ? `<button class="edit-btn" onclick="promoverAAdministrador('${u.uid}', ${esActual})">Hacer Admin</button>` : '<span style="font-size:12px; color:#64748B;">Sin acción</span>'}
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        async function promoverAAdministrador(uid, esActual = false) {
+            if (ROL_ACTIVO !== 'Administrador') return;
+            if (!confirm('¿Confirmas promover este usuario a Administrador?')) return;
+
+            try {
+                await window.updateDoc(window.doc(window.db, "usuarios", uid), {
+                    rol: 'Administrador'
+                });
+                await loadUsersAdmin();
+
+                if (esActual && window.auth.currentUser) {
+                    await activarSesionFirebase(window.auth.currentUser);
+                }
+            } catch (e) {
+                console.error('Error promoviendo usuario:', e);
+                alert('No se pudo promover el usuario.');
+            }
+        }
+
+        /* ==========================
+           MÓDULO: ESTUDIANTES
+        ========================== */
+        async function loadStudents() {
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "estudiantes"));
+                students = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    students.push({
+                        id: doc.id,
+                        name: data.nombre || "",
+                        email: data.correo || "",
+                        grade: data.grado || "",
+                        section: data.seccion || ""
+                    });
+                });
+                renderStudents();
+            } catch (e) { console.error("Error al cargar estudiantes: ", e); }
+        }
+
+        function renderStudents() {
+            const table = document.getElementById('studentsTable');
+            table.innerHTML = '';
+            students.forEach((student) => {
+                table.innerHTML += `
+                    <tr>
+                        <td>${student.name}</td>
+                        <td>${student.email}</td>
+                        <td>${student.grade}</td>
+                        <td>${student.section}</td>
+                        <td class="col-actions" style="${ROL_ACTIVO !== 'Administrador' ? 'display:none;' : ''}">
+                            <button class="edit-btn" onclick="editStudent('${student.id}')">Editar</button>
+                            <button class="delete-btn" onclick="deleteStudent('${student.id}')">Eliminar</button>
+                        </td>
+                    </tr>`;
+            });
+            updateCountersAndCharts();
+        }
+
+        async function saveStudent() {
+            const id = document.getElementById('studentId').value;
+            const nombre = document.getElementById('studentName').value;
+            const correo = document.getElementById('studentEmail').value;
+            const grado = document.getElementById('studentGrade').value;
+            const seccion = document.getElementById('studentSection').value;
+
+            if (!nombre || !correo) return alert("Completa al menos el nombre y correo.");
+
+            try {
+                if (id) {
+                    await window.updateDoc(window.doc(window.db, "estudiantes", id), {
+                        nombre, correo, grado, seccion
+                    });
+                } else {
+                    await window.addDoc(window.collection(window.db, "estudiantes"), {
+                        nombre, correo, grado, seccion, fechaRegistro: new Date()
+                    });
+                }
+                clearStudentForm();
+                await loadStudents();
+            } catch (e) { console.error("Error al guardar estudiante: ", e); }
+        }
+
+        function editStudent(id) {
+            const s = students.find(item => item.id === id);
+            if (!s) return;
+            document.getElementById('studentId').value = s.id;
+            document.getElementById('studentName').value = s.name;
+            document.getElementById('studentEmail').value = s.email;
+            document.getElementById('studentGrade').value = s.grade;
+            document.getElementById('studentSection').value = s.section;
+
+            document.getElementById('studentFormTitle').innerText = "Editar Estudiante";
+            document.getElementById('btnSaveStudent').innerHTML = '<i class="fas fa-edit"></i> Actualizar Estudiante';
+            document.getElementById('btnCancelStudent').style.display = "inline-block";
+        }
+
+        function clearStudentForm() {
+            document.getElementById('studentId').value = '';
+            document.getElementById('studentName').value = '';
+            document.getElementById('studentEmail').value = '';
+            document.getElementById('studentGrade').value = '';
+            document.getElementById('studentSection').value = '';
+
+            document.getElementById('studentFormTitle').innerText = "Registrar Estudiante";
+            document.getElementById('btnSaveStudent').innerHTML = '<i class="fas fa-save"></i> Guardar Estudiante';
+            document.getElementById('btnCancelStudent').style.display = "none";
+        }
+
+        async function deleteStudent(id) {
+            if (confirm("¿Estás seguro de eliminar este estudiante?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, "estudiantes", id));
+                    await loadStudents();
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        /* ==========================
+           MÓDULO: DOCENTES
+        ========================== */
+        async function loadTeachers() {
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "docentes"));
+                teachers = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    teachers.push({
+                        id: doc.id,
+                        name: data.nombre || "",
+                        specialty: data.especialidad || "",
+                        email: data.correo || ""
+                    });
+                });
+                renderTeachers();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderTeachers() {
+            const table = document.getElementById('teachersTable');
+            table.innerHTML = '';
+            teachers.forEach((t) => {
+                table.innerHTML += `
+                    <tr>
+                        <td>${t.name}</td>
+                        <td>${t.specialty}</td>
+                        <td>${t.email}</td>
+                        <td class="col-actions" style="${ROL_ACTIVO !== 'Administrador' ? 'display:none;' : ''}">
+                            <button class="edit-btn" onclick="editTeacher('${t.id}')">Editar</button>
+                            <button class="delete-btn" onclick="deleteTeacher('${t.id}')">Eliminar</button>
+                        </td>
+                    </tr>`;
+            });
+            updateCountersAndCharts();
+        }
+
+        async function saveTeacher() {
+            const id = document.getElementById('teacherId').value;
+            const nombre = document.getElementById('teacherName').value;
+            const especialidad = document.getElementById('teacherSpecialty').value;
+            const correo = document.getElementById('teacherEmail').value;
+
+            if (!nombre) return alert("Por favor ingresa un nombre.");
+
+            try {
+                if (id) {
+                    await window.updateDoc(window.doc(window.db, "docentes", id), {
+                        nombre, especialidad, correo
+                    });
+                } else {
+                    await window.addDoc(window.collection(window.db, "docentes"), {
+                        nombre, especialidad, correo, fechaRegistro: new Date()
+                    });
+                }
+                clearTeacherForm();
+                await loadTeachers();
+            } catch (e) { console.error(e); }
+        }
+
+        function editTeacher(id) {
+            const t = teachers.find(item => item.id === id);
+            if (!t) return;
+            document.getElementById('teacherId').value = t.id;
+            document.getElementById('teacherName').value = t.name;
+            document.getElementById('teacherSpecialty').value = t.specialty;
+            document.getElementById('teacherEmail').value = t.email;
+
+            document.getElementById('teacherFormTitle').innerText = "Editar Docente";
+            document.getElementById('btnSaveTeacher').innerHTML = '<i class="fas fa-edit"></i> Actualizar Docente';
+            document.getElementById('btnCancelTeacher').style.display = "inline-block";
+        }
+
+        function clearTeacherForm() {
+            document.getElementById('teacherId').value = '';
+            document.getElementById('teacherName').value = '';
+            document.getElementById('teacherSpecialty').value = '';
+            document.getElementById('teacherEmail').value = '';
+
+            document.getElementById('teacherFormTitle').innerText = "Registrar Docente";
+            document.getElementById('btnSaveTeacher').innerHTML = '<i class="fas fa-save"></i> Guardar Docente';
+            document.getElementById('btnCancelTeacher').style.display = "none";
+        }
+
+        async function deleteTeacher(id) {
+            if (confirm("¿Eliminar docente?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, "docentes", id));
+                    await loadTeachers();
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        /* ==========================
+           MÓDULO: PADRES
+        ========================== */
+        async function loadParents() {
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "padres"));
+                parents = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    parents.push({
+                        id: doc.id,
+                        name: data.nombre || "",
+                        phone: data.telefono || "",
+                        email: data.correo || ""
+                    });
+                });
+                renderParents();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderParents() {
+            const table = document.getElementById('parentsTable');
+            table.innerHTML = '';
+            parents.forEach((p) => {
+                table.innerHTML += `
+                    <tr>
+                        <td>${p.name}</td>
+                        <td>${p.phone}</td>
+                        <td>${p.email}</td>
+                        <td class="col-actions" style="${ROL_ACTIVO !== 'Administrador' ? 'display:none;' : ''}">
+                            <button class="edit-btn" onclick="editParent('${p.id}')">Editar</button>
+                            <button class="delete-btn" onclick="deleteParent('${p.id}')">Eliminar</button>
+                        </td>
+                    </tr>`;
+            });
+            updateCountersAndCharts();
+        }
+
+        async function saveParent() {
+            const id = document.getElementById('parentId').value;
+            const nombre = document.getElementById('parentName').value;
+            const telefono = document.getElementById('parentPhone').value;
+            const correo = document.getElementById('parentEmail').value;
+
+            if (!nombre) return alert("Por favor ingresa un nombre.");
+
+            try {
+                if (id) {
+                    await window.updateDoc(window.doc(window.db, "padres", id), {
+                        nombre, telefono, correo
+                    });
+                } else {
+                    await window.addDoc(window.collection(window.db, "padres"), {
+                        nombre, telefono, correo, fechaRegistro: new Date()
+                    });
+                }
+                clearParentForm();
+                await loadParents();
+            } catch (e) { console.error(e); }
+        }
+
+        function editParent(id) {
+            const p = parents.find(item => item.id === id);
+            if (!p) return;
+            document.getElementById('parentId').value = p.id;
+            document.getElementById('parentName').value = p.name;
+            document.getElementById('parentPhone').value = p.phone;
+            document.getElementById('parentEmail').value = p.email;
+
+            document.getElementById('parentFormTitle').innerText = "Editar Padre o Apoderado";
+            document.getElementById('btnSaveParent').innerHTML = '<i class="fas fa-edit"></i> Actualizar Padre';
+            document.getElementById('btnCancelParent').style.display = "inline-block";
+        }
+
+        function clearParentForm() {
+            document.getElementById('parentId').value = '';
+            document.getElementById('parentName').value = '';
+            document.getElementById('parentPhone').value = '';
+            document.getElementById('parentEmail').value = '';
+
+            document.getElementById('parentFormTitle').innerText = "Registrar Padre o Apoderado";
+            document.getElementById('btnSaveParent').innerHTML = '<i class="fas fa-save"></i> Guardar Padre';
+            document.getElementById('btnCancelParent').style.display = "none";
+        }
+
+        async function deleteParent(id) {
+            if (confirm("¿Eliminar apoderado?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, "padres", id));
+                    await loadParents();
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        /* ==========================
+           MÓDULO: ACTIVIDADES
+        ========================== */
+        async function loadActivities() {
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "actividades"));
+                activities = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    activities.push({
+                        id: doc.id,
+                        title: data.titulo || "",
+                        date: data.fecha || "",
+                        time: data.hora || "",
+                        description: data.descripcion || ""
+                    });
+                });
+                renderActivities();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderActivities() {
+            const table = document.getElementById('activitiesTable');
+            table.innerHTML = '';
+            activities.forEach((act) => {
+                table.innerHTML += `
+                    <tr>
+                        <td>${act.title}</td>
+                        <td>${act.date}</td>
+                        <td>${act.time}</td>
+                        <td class="col-actions" style="${ROL_ACTIVO !== 'Administrador' ? 'display:none;' : ''}">
+                            <button class="edit-btn" onclick="editActivity('${act.id}')">Editar</button>
+                            <button class="delete-btn" onclick="deleteActivity('${act.id}')">Eliminar</button>
+                        </td>
+                    </tr>`;
+            });
+            updateCountersAndCharts();
+        }
+
+        async function saveActivity() {
+            const id = document.getElementById('activityId').value;
+            const titulo = document.getElementById('activityTitle').value;
+            const fecha = document.getElementById('activityDate').value;
+            const hora = document.getElementById('activityTime').value;
+            const descripcion = document.getElementById('activityDescription').value;
+
+            if (!titulo) return alert("Por favor ingresa un título.");
+
+            try {
+                if (id) {
+                    await window.updateDoc(window.doc(window.db, "actividades", id), {
+                        titulo, fecha, hora, descripcion
+                    });
+                } else {
+                    await window.addDoc(window.collection(window.db, "actividades"), {
+                        titulo, fecha, hora, descripcion, estado: "Programada"
+                    });
+                }
+                clearActivityForm();
+                await loadActivities();
+            } catch (e) { console.error(e); }
+        }
+
+        function editActivity(id) {
+            const act = activities.find(item => item.id === id);
+            if (!act) return;
+            document.getElementById('activityId').value = act.id;
+            document.getElementById('activityTitle').value = act.title;
+            document.getElementById('activityDate').value = act.date;
+            document.getElementById('activityTime').value = act.time;
+            document.getElementById('activityDescription').value = act.description;
+
+            document.getElementById('activityFormTitle').innerText = "Editar Actividad";
+            document.getElementById('btnSaveActivity').innerHTML = '<i class="fas fa-edit"></i> Actualizar Actividad';
+            document.getElementById('btnCancelActivity').style.display = "inline-block";
+        }
+
+        function clearActivityForm() {
+            document.getElementById('activityId').value = '';
+            document.getElementById('activityTitle').value = '';
+            document.getElementById('activityDate').value = '';
+            document.getElementById('activityTime').value = '';
+            document.getElementById('activityDescription').value = '';
+
+            document.getElementById('activityFormTitle').innerText = "Registrar Actividad";
+            document.getElementById('btnSaveActivity').innerHTML = '<i class="fas fa-save"></i> Registrar Actividad';
+            document.getElementById('btnCancelActivity').style.display = "none";
+        }
+
+        async function deleteActivity(id) {
+            if (confirm("¿Eliminar actividad?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, "actividades", id));
+                    await loadActivities();
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        /* ==========================
+           MÓDULO: BIBLIOTECA VIRTUAL
+        ========================== */
+        async function loadLibrary() {
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "biblioteca"));
+                library = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    library.push({
+                        id: doc.id,
+                        titulo: data.titulo || "",
+                        categoria: data.categoria || "Libros",
+                        url: data.url || ""
+                    });
+                });
+                renderLibrary();
+            } catch (e) { console.error("Error en biblioteca: ", e); }
+        }
+
+        function renderLibrary() {
+            const container = document.getElementById('libraryContainer');
+            container.innerHTML = '';
+
+            if (library.length === 0) {
+                container.innerHTML = '<p style="color:var(--gray); padding: 15px;">No hay recursos subidos aún. Agrega uno usando el formulario superior.</p>';
+                return;
+            }
+
+            library.forEach((item) => {
+                let icon = 'fa-book';
+                if (item.categoria === "Documentos" || item.titulo.toLowerCase().includes("reglamento")) icon = 'fa-file-pdf';
+                if (item.categoria === "Multimedia") icon = 'fa-video';
+
+                container.innerHTML += `
+                    <div class="card">
+                        <div style="cursor:pointer;" onclick="window.open('${item.url || '#'}', '_blank')">
+                            <i class="fas ${icon} fa-3x" style="color:var(--primary);"></i>
+                            <h3 style="margin-top:15px; font-weight:600; color:var(--dark);">${item.titulo}</h3>
+                            <p>${item.categoria || 'Recurso académico'}</p>
+                        </div>
+                        <div class="library-actions col-actions" style="${ROL_ACTIVO !== 'Administrador' ? 'display:none;' : ''}">
+                            <button class="edit-btn" onclick="editLibrary('${item.id}')"><i class="fas fa-edit"></i></button>
+                            <button class="delete-btn" onclick="deleteLibrary('${item.id}')"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        async function saveLibrary() {
+            const id = document.getElementById('libraryId').value;
+            const titulo = document.getElementById('libraryTitle').value;
+            const categoria = document.getElementById('libraryCategory').value;
+            const url = document.getElementById('libraryUrl').value;
+
+            if (!titulo || !url) return alert("Por favor ingresa un título y un enlace (URL) válidos.");
+
+            try {
+                if (id) {
+                    await window.updateDoc(window.doc(window.db, "biblioteca", id), {
+                        titulo, categoria, url
+                    });
+                } else {
+                    await window.addDoc(window.collection(window.db, "biblioteca"), {
+                        titulo, categoria, url
+                    });
+                }
+                clearLibraryForm();
+                await loadLibrary();
+            } catch (e) { console.error("Error al guardar en biblioteca:", e); }
+        }
+
+        function editLibrary(id) {
+            const item = library.find(x => x.id === id);
+            if (!item) return;
+            document.getElementById('libraryId').value = item.id;
+            document.getElementById('libraryTitle').value = item.titulo;
+            document.getElementById('libraryCategory').value = item.categoria;
+            document.getElementById('libraryUrl').value = item.url;
+
+            document.getElementById('libraryFormTitle').innerText = "Editar Recurso de Biblioteca";
+            document.getElementById('btnSaveLibrary').innerHTML = '<i class="fas fa-edit"></i> Actualizar Recurso';
+            document.getElementById('btnCancelLibrary').style.display = "inline-block";
+        }
+
+        function clearLibraryForm() {
+            document.getElementById('libraryId').value = '';
+            document.getElementById('libraryTitle').value = '';
+            document.getElementById('libraryCategory').value = 'Libros';
+            document.getElementById('libraryUrl').value = '';
+
+            document.getElementById('libraryFormTitle').innerText = "Añadir Recurso a la Biblioteca";
+            document.getElementById('btnSaveLibrary').innerHTML = '<i class="fas fa-save"></i> Guardar Recurso';
+            document.getElementById('btnCancelLibrary').style.display = "none";
+        }
+
+        async function deleteLibrary(id) {
+            if (confirm("¿Eliminar recurso de la biblioteca?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, "biblioteca", id));
+                    await loadLibrary();
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        /* ==========================
+           MÓDULO: COMUNICADOS
+        ========================== */
+        async function loadNotices() {
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "comunicados"));
+                notices = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    notices.push({
+                        id: doc.id,
+                        title: data.titulo || "",
+                        message: data.mensaje || ""
+                    });
+                });
+                renderNotices();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderNotices() {
+            const table = document.getElementById('noticesTable');
+            table.innerHTML = '';
+            notices.forEach((n) => {
+                table.innerHTML += `
+                    <tr>
+                        <td><strong>${n.title}</strong></td>
+                        <td>${n.message}</td>
+                        <td class="col-actions" style="${ROL_ACTIVO !== 'Administrador' ? 'display:none;' : ''}">
+                            <button class="edit-btn" onclick="editNotice('${n.id}')">Editar</button>
+                            <button class="delete-btn" onclick="deleteNotice('${n.id}')">Eliminar</button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        async function saveNotice() {
+            const id = document.getElementById('noticeId').value;
+            const titulo = document.getElementById('noticeTitle').value;
+            const mensaje = document.getElementById('noticeMessage').value;
+
+            if (!titulo) return alert("Por favor añade un título.");
+
+            try {
+                if (id) {
+                    await window.updateDoc(window.doc(window.db, "comunicados", id), {
+                        titulo, mensaje
+                    });
+                } else {
+                    await window.addDoc(window.collection(window.db, "comunicados"), {
+                        titulo, mensaje, fecha: new Date()
+                    });
+                }
+                clearNoticeForm();
+                await loadNotices();
+            } catch (e) { console.error(e); }
+        }
+
+        function editNotice(id) {
+            const n = notices.find(item => item.id === id);
+            if (!n) return;
+            document.getElementById('noticeId').value = n.id;
+            document.getElementById('noticeTitle').value = n.title;
+            document.getElementById('noticeMessage').value = n.message;
+
+            document.getElementById('noticeFormTitle').innerText = "Editar Comunicado";
+            document.getElementById('btnSaveNotice').innerHTML = '<i class="fas fa-edit"></i> Actualizar Comunicado';
+            document.getElementById('btnCancelNotice').style.display = "inline-block";
+        }
+
+        function clearNoticeForm() {
+            document.getElementById('noticeId').value = '';
+            document.getElementById('noticeTitle').value = '';
+            document.getElementById('noticeMessage').value = '';
+
+            document.getElementById('noticeFormTitle').innerText = "Publicar Comunicado";
+            document.getElementById('btnSaveNotice').innerHTML = '<i class="fas fa-bullhorn"></i> Publicar Comunicado';
+            document.getElementById('btnCancelNotice').style.display = "none";
+        }
+
+        async function deleteNotice(id) {
+            if (confirm("¿Eliminar comunicado?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, "comunicados", id));
+                    await loadNotices();
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        /* ==========================
+           MÓDULO: GESTIÓN ACADÉMICA (HORARIOS)
+        ========================== */
+        async function loadSchedules() {
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "horarios"));
+                schedules = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    schedules.push({
+                        id: doc.id,
+                        course: data.curso || "",
+                        day: data.dia || "",
+                        start: data.inicio || "",
+                        end: data.fin || "",
+                        room: data.aula || ""
+                    });
+                });
+                renderSchedules();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderSchedules() {
+            const table = document.getElementById('schedulesTable');
+            table.innerHTML = '';
+            schedules.forEach((s) => {
+                table.innerHTML += `
+                    <tr>
+                        <td><strong>${s.course}</strong></td>
+                        <td>${s.day}</td>
+                        <td>${s.start} - ${s.end}</td>
+                        <td>${s.room}</td>
+                        <td class="col-actions" style="${ROL_ACTIVO !== 'Administrador' ? 'display:none;' : ''}">
+                            <button class="edit-btn" onclick="editSchedule('${s.id}')">Editar</button>
+                            <button class="delete-btn" onclick="deleteSchedule('${s.id}')">Eliminar</button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        async function saveSchedule() {
+            const id = document.getElementById('scheduleId').value;
+            const curso = document.getElementById('scheduleCourse').value;
+            const dia = document.getElementById('scheduleDay').value;
+            const inicio = document.getElementById('scheduleStart').value;
+            const fin = document.getElementById('scheduleEnd').value;
+            const aula = document.getElementById('scheduleRoom').value;
+
+            if (!curso) return alert("Por favor ingresa un curso.");
+
+            try {
+                if (id) {
+                    await window.updateDoc(window.doc(window.db, "horarios", id), {
+                        curso, dia, inicio, fin, aula
+                    });
+                } else {
+                    await window.addDoc(window.collection(window.db, "horarios"), {
+                        curso, dia, inicio, fin, aula
+                    });
+                }
+                clearScheduleForm();
+                await loadSchedules();
+            } catch (e) { console.error(e); }
+        }
+
+        function editSchedule(id) {
+            const s = schedules.find(item => item.id === id);
+            if (!s) return;
+            document.getElementById('scheduleId').value = s.id;
+            document.getElementById('scheduleCourse').value = s.course;
+            document.getElementById('scheduleDay').value = s.day;
+            document.getElementById('scheduleStart').value = s.start;
+            document.getElementById('scheduleEnd').value = s.end;
+            document.getElementById('scheduleRoom').value = s.room;
+
+            document.getElementById('scheduleFormTitle').innerText = "Editar Horario";
+            document.getElementById('btnSaveSchedule').innerHTML = '<i class="fas fa-edit"></i> Actualizar Horario';
+            document.getElementById('btnCancelSchedule').style.display = "inline-block";
+        }
+
+        function clearScheduleForm() {
+            document.getElementById('scheduleId').value = '';
+            document.getElementById('scheduleCourse').value = '';
+            document.getElementById('scheduleDay').value = 'Lunes';
+            document.getElementById('scheduleStart').value = '';
+            document.getElementById('scheduleEnd').value = '';
+            document.getElementById('scheduleRoom').value = '';
+
+            document.getElementById('scheduleFormTitle').innerText = "Programar Horario";
+            document.getElementById('btnSaveSchedule').innerHTML = '<i class="fas fa-save"></i> Guardar Horario';
+            document.getElementById('btnCancelSchedule').style.display = "none";
+        }
+
+        async function deleteSchedule(id) {
+            if (confirm("¿Eliminar bloque de horario?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, "horarios", id));
+                    await loadSchedules();
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        /* ==========================
+           MÓDULO: GESTIÓN ACADÉMICA (EVALUACIONES)
+        ========================== */
+        async function loadEvals() {
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "evaluaciones"));
+                evals = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    evals.push({
+                        id: doc.id,
+                        course: data.curso || "",
+                        date: data.fecha || "",
+                        description: data.descripcion || ""
+                    });
+                });
+                renderEvals();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderEvals() {
+            const table = document.getElementById('evalsTable');
+            table.innerHTML = '';
+            evals.forEach((ev) => {
+                table.innerHTML += `
+                    <tr>
+                        <td><strong>${ev.course}</strong></td>
+                        <td>${ev.date}</td>
+                        <td>${ev.description}</td>
+                        <td class="col-actions" style="${ROL_ACTIVO !== 'Administrador' ? 'display:none;' : ''}">
+                            <button class="edit-btn" onclick="editEval('${ev.id}')">Editar</button>
+                            <button class="delete-btn" onclick="deleteEval('${ev.id}')">Eliminar</button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        async function saveEval() {
+            const id = document.getElementById('evalId').value;
+            const curso = document.getElementById('evalCourse').value;
+            const fecha = document.getElementById('evalDate').value;
+            const descripcion = document.getElementById('evalDescription').value;
+
+            if (!curso) return alert("Por favor ingresa un curso.");
+
+            try {
+                if (id) {
+                    await window.updateDoc(window.doc(window.db, "evaluaciones", id), {
+                        curso, fecha, descripcion
+                    });
+                } else {
+                    await window.addDoc(window.collection(window.db, "evaluaciones"), {
+                        curso, fecha, descripcion
+                    });
+                }
+                clearEvalForm();
+                await loadEvals();
+            } catch (e) { console.error(e); }
+        }
+
+        function editEval(id) {
+            const ev = evals.find(item => item.id === id);
+            if (!ev) return;
+            document.getElementById('evalId').value = ev.id;
+            document.getElementById('evalCourse').value = ev.course;
+            document.getElementById('evalDate').value = ev.date;
+            document.getElementById('evalDescription').value = ev.description;
+
+            document.getElementById('evalFormTitle').innerText = "Editar Evaluación";
+            document.getElementById('btnSaveEval').innerHTML = '<i class="fas fa-edit"></i> Actualizar Evaluación';
+            document.getElementById('btnCancelEval').style.display = "inline-block";
+        }
+
+        function clearEvalForm() {
+            document.getElementById('evalId').value = '';
+            document.getElementById('evalCourse').value = '';
+            document.getElementById('evalDate').value = '';
+            document.getElementById('evalDescription').value = '';
+
+            document.getElementById('evalFormTitle').innerText = "Programar Evaluación";
+            document.getElementById('btnSaveEval').innerHTML = '<i class="fas fa-save"></i> Guardar Evaluación';
+            document.getElementById('btnCancelEval').style.display = "none";
+        }
+
+        async function deleteEval(id) {
+            if (confirm("¿Eliminar evaluación académica?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, "evaluaciones", id));
+                    await loadEvals();
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        /* ==========================
+           MÓDULO: HISTORIAL DE CONSULTAS DE IA
+        ========================== */
+        async function loadHistory() {
+            try {
+                // Obtenemos de la colección 'consultas_ia' ordenada de forma descendente
+                const querySnapshot = await window.getDocs(window.collection(window.db, "consultas_ia"));
+                const table = document.getElementById("historyTable");
+                table.innerHTML = "";
+                
+                let count = 0;
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    count++;
+                    const userRole = data.rol || "Estudiante";
+                    const questionText = data.pregunta || "Consulta realizada";
+                    let dateText = "Reciente";
+                    if(data.fecha) {
+                        const date = data.fecha.toDate ? data.fecha.toDate() : new Date(data.fecha);
+                        dateText = date.toLocaleString();
+                    }
+                    
+                    table.innerHTML += `
+                        <tr>
+                            <td><span class="user-badge" style="background:#475569;">${userRole}</span></td>
+                            <td>${questionText}</td>
+                            <td>${dateText}</td>
+                        </tr>
+                    `;
+                });
+
+                if(count === 0) {
+                    table.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--gray);">Aún no hay consultas de IA auditadas en el sistema.</td></tr>';
+                }
+            } catch (e) { console.error("Error al cargar historial: ", e); }
+        }
+
+        /* ==========================
+           CONTADORES Y GRÁFICOS DINÁMICOS
+        ========================== */
+        async function updateCountersAndCharts() {
+            // Actualizar tarjetas del dashboard
+            document.getElementById('studentsCount').innerText = students.length;
+            document.getElementById('teachersCount').innerText = teachers.length;
+            document.getElementById('parentsCount').innerText = parents.length;
+            document.getElementById('activitiesCount').innerText = activities.length;
+
+            // Actualizar tarjetas de reporte estadístico
+            document.getElementById('reportStudents').innerText = students.length;
+            document.getElementById('reportTeachers').innerText = teachers.length;
+            document.getElementById('reportParents').innerText = parents.length;
+            document.getElementById('reportActivities').innerText = activities.length;
+
+            // Actualizar Gráfico Doughnut (Distribución de Usuarios)
+            if (myChart2) {
+                myChart2.data.datasets[0].data = [students.length, teachers.length, parents.length];
+                myChart2.update();
+            }
+
+            // Consultar base de datos para Gráfico de Barras de Consultas de IA
+            await updateAIChart();
+        }
+
+        async function updateAIChart() {
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "consultas_ia"));
+                const countsByMonth = Array(12).fill(0);
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.fecha) {
+                        const date = data.fecha.toDate ? data.fecha.toDate() : new Date(data.fecha);
+                        const monthIndex = date.getMonth();
+                        countsByMonth[monthIndex] += 1;
+                    }
+                });
+
+                if (myChart1) {
+                    myChart1.data.datasets[0].data = countsByMonth;
+                    myChart1.update();
+                }
+            } catch (e) {
+                console.error("Error cargando estadísticas de consultas de IA: ", e);
+            }
+        }
+
+        // Registrar consulta en Firebase
+        async function trackAIConsultation(preguntaRealizada) {
+            try {
+                await window.addDoc(window.collection(window.db, "consultas_ia"), {
+                    pregunta: preguntaRealizada,
+                    rol: ROL_ACTIVO,
+                    fecha: new Date()
+                });
+                await updateAIChart();
+                await loadHistory();
+            } catch (e) {
+                console.error("No se pudo auditar la consulta de IA:", e);
+            }
+        }
+
+        /* ==========================
+           ASISTENTE IA (GROQ)
+        ========================== */
+        async function sendQuestion() {
+            const questionInput = document.getElementById('question');
+            const question = questionInput.value.trim();
+
+            if (question === '') return;
+
+            const chat = document.getElementById('chatArea');
+            chat.innerHTML += `<div class="chat-bubble user"><strong>Tú:</strong> ${question}</div>`;
+
+            let avatarActivo = "Sofía"; 
+            questionInput.value = '';
+            chat.scrollTop = chat.scrollHeight;
+
+            const OPENAI_API_KEY = localStorage.getItem('AI_API_KEY') || '';
+            const OPENAI_MODEL = localStorage.getItem('AI_MODEL') || 'gpt-4o-mini';
+
+            if (!OPENAI_API_KEY) {
+                chat.innerHTML += `<div class="chat-bubble assistant" style="color:red;"><strong>Sistema:</strong> Falta configurar la clave de API. Guarda tu clave en localStorage con la llave AI_API_KEY.</div>`;
+                chat.scrollTop = chat.scrollHeight;
+                return;
+            }
+
+            const pensandoElem = document.createElement('div');
+            pensandoElem.className = "chat-bubble assistant";
+            pensandoElem.id = "pensando";
+            pensandoElem.style.color = "gray";
+            pensandoElem.innerHTML = `<em>${avatarActivo} está consultando la base de datos de San Andres...</em>`;
+            chat.appendChild(pensandoElem);
+            chat.scrollTop = chat.scrollHeight;
+
+            try {
+                async function obtenerDatosColeccion(nombreColeccion) {
+                    try {
+                        const querySnapshot = await window.getDocs(window.collection(window.db, nombreColeccion));
+                        const documentos = [];
+                        querySnapshot.forEach((doc) => {
+                            documentos.push({ id: doc.id, ...doc.data() });
+                        });
+                        return documentos.length > 0 ? JSON.stringify(documentos) : `No hay registros cargados aún en ${nombreColeccion}.`;
+                    } catch (e) {
+                        return `Error leyendo ${nombreColeccion}.`;
+                    }
+                }
+
+                const [datosActividades, datosBiblioteca, datosComunicados, datosDocentes, datosEstudiantes, datosPadres, datosHorarios, datosEvaluaciones] = await Promise.all([
+                    obtenerDatosColeccion('actividades'),
+                    obtenerDatosColeccion('biblioteca'),
+                    obtenerDatosColeccion('comunicados'),
+                    obtenerDatosColeccion('docentes'),
+                    obtenerDatosColeccion('estudiantes'),
+                    obtenerDatosColeccion('padres'),
+                    obtenerDatosColeccion('horarios'),
+                    obtenerDatosColeccion('evaluaciones')
+                ]);
+
+                const queryPensando = document.getElementById('pensando');
+                if (queryPensando) queryPensando.remove();
+
+                const promptSistem = `Eres ${avatarActivo}, la Inteligencia Artificial del colegio San Andres College en Piura, Perú.
+                Respondes de forma asertiva, amable, breve y profesional al perfil de un ${ROL_ACTIVO}.
+                Dispones de acceso directo a la base de datos escolar de Firebase en tiempo real:
+
+                [ACTIVIDADES PROGRAMADAS]: ${datosActividades}
+                [BIBLIOTECA VIRTUAL]: ${datosBiblioteca}
+                [COMUNICADOS]: ${datosComunicados}
+                [DOCENTES]: ${datosDocentes}
+                [ESTUDIANTES]: ${datosEstudiantes}
+                [PADRES]: ${datosPadres}
+                [HORARIOS]: ${datosHorarios}
+                [EVALUACIONES]: ${datosEvaluaciones}
+
+                DIRECTRICES DE RESPUESTA:
+                - Si te preguntan por horarios, exámenes, actividades o reglamentos, busca en los datos provistos y da una respuesta exacta basada solo en la información provista.
+                - Si la información no existe, dilo con amabilidad y educación ("Actualmente no contamos con el registro exacto de ese elemento..."). NUNCA menciones nombres de base de datos técnicos como Firestore o colecciones de JSON en tu respuesta.`;
+
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`
+                    },
+                    body: JSON.stringify({ 
+                        model: OPENAI_MODEL,
+                        messages: [
+                            { role: "system", content: promptSistem },
+                            { role: "user", content: question }
+                        ],
+                        temperature: 0.3,
+                        max_tokens: 350
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.choices && data.choices[0] && data.choices[0].message) {
+                    const systemReply = data.choices[0].message.content;
+                    chat.innerHTML += `<div class="chat-bubble assistant"><strong>${avatarActivo}:</strong> ${systemReply}</div>`;
+                    await trackAIConsultation(question);
+                }
+                
+            } catch (error) {
+                console.error("Error general:", error);
+                const queryPensando = document.getElementById('pensando');
+                if (queryPensando) queryPensando.remove();
+                chat.innerHTML += `<div class="chat-bubble assistant" style="color:red;"><strong>Sistema:</strong> Hubo un inconveniente al conectar con la IA.</div>`;
+            }
+
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        /* ==========================
+           INICIALIZACIÓN DE GRÁFICOS (Chart.js)
+        ========================== */
+        function initCharts() {
+            const ctx1 = document.getElementById('chart1');
+            if (ctx1) {
+                myChart1 = new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+                        datasets: [{ 
+                            label: 'Consultas IA Registradas', 
+                            data: Array(12).fill(0), 
+                            backgroundColor: '#0D47A1',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { stepSize: 1 }
+                            }
+                        }
+                    }
+                });
+            }
+
+            const ctx2 = document.getElementById('chart2');
+            if (ctx2) {
+                myChart2 = new Chart(ctx2, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Estudiantes', 'Docentes', 'Padres'],
+                        datasets: [{ 
+                            data: [0, 0, 0], 
+                            backgroundColor: ['#0D47A1', '#00C853', '#94A3B8'] 
+                        }]
+                    },
+                    options: { responsive: true }
+                });
+            }
+
+            const ctx3 = document.getElementById('chart3');
+            if (ctx3) {
+                myChart3 = new Chart(ctx3, {
+                    type: 'line',
+                    data: {
+                        labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul'],
+                        datasets: [{ 
+                            label: 'Flujo y Tránsito General de Gestión', 
+                            data: [15, 25, 20, 40, 35, 55, 65], 
+                            borderColor: '#00C853', 
+                            fill: false,
+                            tension: 0.3
+                        }]
+                    },
+                    options: { responsive: true }
+                });
+            }
+        }
+
+        /* ==========================
+           FILTRO DE BÚSQUEDA REAL EN PANTALLA
+        ========================== */
+        function filtrarContenidoGlobal() {
+            const textoBusqueda = document.getElementById('globalSearch').value.toLowerCase();
+            const secciones = document.querySelectorAll('.section');
+            let seccionActiva = null;
+            
+            secciones.forEach(sec => {
+                if (sec.classList.contains('active') || (window.getComputedStyle(sec).display !== 'none')) {
+                    seccionActiva = sec;
+                }
+            });
+
+            if (!seccionActiva) return;
+
+            const elementosFiltrables = seccionActiva.querySelectorAll('tbody tr, .cards .card');
+            elementosFiltrables.forEach(elemento => {
+                const textoElemento = elemento.innerText.toLowerCase();
+                if (textoElemento.includes(textoBusqueda)) {
+                    elemento.style.display = ""; 
+                } else {
+                    elemento.style.display = "none"; 
+                }
+            });
+        }
+
+        /* ==========================
+           INICIALIZADOR ASÍNCRONO GLOBAL
+        ========================== */
+        window.initApp = async function() {
+            initCharts();
+            await loadStudents();
+            await loadTeachers();
+            await loadParents();
+            await loadActivities();
+            await loadNotices();
+            await loadLibrary();
+            await loadSchedules();
+            await loadEvals();
+            await loadHistory();
+            await loadUsersAdmin();
+        }
+    </script>
+</body>
+</html>
