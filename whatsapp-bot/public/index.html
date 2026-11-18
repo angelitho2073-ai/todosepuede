@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel WhatsApp</title>
+<style>
+  :root { --bg:#f4f6f5; --card:#fff; --ink:#1d2a24; --muted:#66756d; --line:#dfe5e2; --brand:#128c4a; --brand-ink:#fff; --warn:#b26a00; --err:#b3261e; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#101614; --card:#18201d; --ink:#e6ede9; --muted:#93a39a; --line:#2a3530; --brand:#25b061; --brand-ink:#04140b; --warn:#f0a83a; --err:#ff8a80; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { display:flex; gap:12px; align-items:center; padding:12px 16px; background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:2; flex-wrap:wrap; }
+  header h1 { font-size:17px; margin:0; flex:1; }
+  nav button { background:none; border:0; padding:8px 10px; color:var(--muted); font:inherit; cursor:pointer; border-radius:8px; }
+  nav button.on { color:var(--ink); background:var(--bg); font-weight:600; }
+  main { max-width:1100px; margin:0 auto; padding:16px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:16px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; }
+  .stat b { display:block; font-size:24px; }
+  .stat span { color:var(--muted); font-size:13px; }
+  .layout { display:grid; grid-template-columns:minmax(260px,360px) 1fr; gap:16px; }
+  @media (max-width:760px) { .layout { grid-template-columns:1fr; } }
+  .list { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .item { padding:12px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .item:last-child { border-bottom:0; }
+  .item.on, .item:hover { background:var(--bg); }
+  .item small { color:var(--muted); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; min-height:200px; }
+  .badge { display:inline-block; font-size:12px; padding:2px 8px; border-radius:99px; background:var(--bg); border:1px solid var(--line); }
+  .b-en_revision { color:var(--brand); border-color:var(--brand); }
+  .b-pendiente_pago { color:var(--warn); border-color:var(--warn); }
+  .b-error { color:var(--err); border-color:var(--err); }
+  textarea, input, select { width:100%; font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px; }
+  textarea { min-height:280px; resize:vertical; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
+  button.btn { background:var(--brand); color:var(--brand-ink); border:0; padding:9px 14px; border-radius:8px; font:inherit; font-weight:600; cursor:pointer; }
+  button.sec { background:var(--bg); color:var(--ink); border:1px solid var(--line); }
+  button.dan { background:none; color:var(--err); border:1px solid var(--err); }
+  .msgs { display:flex; flex-direction:column; gap:6px; max-height:55vh; overflow:auto; padding:4px; }
+  .m { max-width:80%; padding:8px 10px; border-radius:10px; white-space:pre-wrap; }
+  .m.cliente { background:var(--bg); align-self:flex-start; }
+  .m.bot, .m.humano { background:color-mix(in srgb,var(--brand) 18%,var(--card)); align-self:flex-end; }
+  .m small { display:block; color:var(--muted); font-size:11px; }
+  .muted { color:var(--muted); }
+  pre { white-space:pre-wrap; background:var(--bg); padding:10px; border-radius:8px; }
+  #login { max-width:360px; margin:15vh auto; background:var(--card); padding:20px; border-radius:12px; border:1px solid var(--line); }
+  .hide { display:none !important; }
+</style>
+</head>
+<body>
+<div id="login">
+  <h2 style="margin-top:0">Panel del negocio</h2>
+  <p class="muted">Ingresa tu ADMIN_TOKEN (el que pusiste en el archivo .env).</p>
+  <input id="tok" type="password" placeholder="Token de administrador">
+  <div class="row"><button class="btn" onclick="login()">Entrar</button></div>
+</div>
+
+<div id="app" class="hide">
+  <header>
+    <h1>📲 WhatsApp + Claude</h1>
+    <nav>
+      <button data-tab="pedidos" class="on">Pedidos</button>
+      <button data-tab="chats">Chats</button>
+      <button data-tab="catalogo">Precios</button>
+    </nav>
+  </header>
+  <main>
+    <div class="stats" id="stats"></div>
+
+    <section id="t-pedidos">
+      <div class="row"><select id="filtro" style="max-width:240px" onchange="cargarPedidos()">
+        <option value="">Todos los pedidos</option>
+        <option value="en_revision">Para revisar</option>
+        <option value="pendiente_pago">Esperando pago</option>
+        <option value="en_cola">En cola</option>
+        <option value="en_progreso">En elaboración</option>
+        <option value="entregado">Entregados</option>
+        <option value="error">Con error</option>
+      </select></div>
+      <div class="layout"><div class="list" id="lp"></div><div class="panel" id="dp"><p class="muted">Elige un pedido.</p></div></div>
+    </section>
+
+    <section id="t-chats" class="hide">
+      <div class="layout"><div class="list" id="lc"></div><div class="panel" id="dc"><p class="muted">Elige un chat.</p></div></div>
+    </section>
+
+    <section id="t-catalogo" class="hide">
+      <div class="panel">
+        <p class="muted">Edita tus servicios y precios (formato JSON). El bot usa esto para cotizar.</p>
+        <textarea id="cat" style="min-height:420px;font-family:ui-monospace,monospace;font-size:13px"></textarea>
+        <div class="row"><button class="btn" onclick="guardarCatalogo()">Guardar precios</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const ESTADOS = { pendiente_pago:"Esperando pago", en_cola:"En cola", en_progreso:"Claude trabajando…", en_revision:"Listo para revisar", entregado:"Entregado", error:"Error", cancelado:"Cancelado" };
+let TOKEN = ""; try { TOKEN = localStorage.getItem("adm") || ""; } catch {}
+let sel = null, selChat = null, moneda = "S/";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+async function api(path, opts = {}) {
+  const r = await fetch("/api" + path, { ...opts, headers: { "Content-Type":"application/json", Authorization:"Bearer " + TOKEN }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { salir(); throw new Error("No autorizado"); }
+  if (!r.ok) { alert(j.error || "Error"); throw new Error(j.error); }
+  return j;
+}
+function login() { TOKEN = $("tok").value.trim(); try { localStorage.setItem("adm", TOKEN); } catch {} iniciar(); }
+function salir() { $("app").classList.add("hide"); $("login").classList.remove("hide"); }
+
+async function iniciar() {
+  try { await resumen(); } catch { return; }
+  $("login").classList.add("hide"); $("app").classList.remove("hide");
+  cargarPedidos();
+}
+
+document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("on", x === b));
+  ["pedidos","chats","catalogo"].forEach((t) => $("t-" + t).classList.toggle("hide", t !== b.dataset.tab));
+  if (b.dataset.tab === "chats") cargarChats();
+  if (b.dataset.tab === "catalogo") api("/catalogo").then((c) => $("cat").value = JSON.stringify(c, null, 2));
+});
+
+async function resumen() {
+  const s = await api("/resumen"); moneda = s.moneda;
+  $("stats").innerHTML = [["Para revisar",s.en_revision],["Esperando pago",s.pendiente_pago],["En trabajo",s.en_trabajo],["Entregados",s.entregados],["Chats",s.chats]]
+    .map(([t,n]) => `<div class="stat"><b>${n}</b><span>${t}</span></div>`).join("");
+}
+
+async function cargarPedidos() {
+  const lista = await api("/pedidos" + ($("filtro").value ? "?estado=" + $("filtro").value : ""));
+  $("lp").innerHTML = lista.map((p) => `<div class="item ${p.id===sel?"on":""}" onclick="verPedido('${p.id}')">
+    <b>${esc(p.servicio_nombre)}</b> <span class="badge b-${p.estado}">${ESTADOS[p.estado]}</span>
+    <small>${esc(p.cliente || p.telefono)} · ${moneda}${p.precio_total} · ${esc(p.id)}</small></div>`).join("") || `<div class="item muted">Aún no hay pedidos.</div>`;
+}
+
+async function verPedido(id) {
+  sel = id; const p = await api("/pedidos/" + id); cargarPedidos();
+  const acciones = [];
+  if (p.estado === "pendiente_pago") acciones.push(`<input id="adel" type="number" value="${p.precio_total/2}" style="max-width:130px" title="Adelanto recibido"><button class="btn" onclick="pago()">Confirmar pago y empezar</button>`);
+  if (["en_revision","entregado","error"].includes(p.estado)) acciones.push(`<button class="sec btn" onclick="rehacer()">Pedir a Claude que lo rehaga</button>`);
+  if (p.estado === "en_revision" || (p.estado === "entregado" && p.final)) acciones.push(`<select id="fmt" style="max-width:150px"><option value="auto">Formato automático</option><option value="texto">Como texto</option><option value="docx">Como Word</option></select><button class="btn" onclick="entregar()">${p.estado==="entregado"?"Reenviar":"Aprobar y entregar"}</button>`);
+  if (!["entregado","cancelado"].includes(p.estado)) acciones.push(`<button class="dan btn" onclick="cancelar()">Cancelar</button>`);
+  $("dp").innerHTML = `
+    <h3 style="margin-top:0">${esc(p.servicio_nombre)} <span class="badge b-${p.estado}">${ESTADOS[p.estado]}</span></h3>
+    <p class="muted">${esc(p.cliente || "")} · +${esc(p.telefono)} · ${moneda}${p.precio_total} · Plazo: ${esc(p.plazo)} ${p.urgente ? "· URGENTE" : ""}</p>
+    ${p.error ? `<p style="color:var(--err)">⚠️ ${esc(p.error)}</p>` : ""}
+    <details><summary>Instrucciones del pedido</summary><pre>${esc(p.descripcion)}</pre></details>
+    ${p.notasRevision ? `<p><b>Correcciones pedidas:</b> ${esc(p.notasRevision)}</p>` : ""}
+    ${p.final || p.borrador ? `<p><b>Trabajo final</b> <span class="muted">(puedes editarlo antes de entregar)</span></p>
+      <textarea id="fin">${esc(p.final || p.borrador)}</textarea>
+      <div class="row"><button class="sec btn" onclick="guardarFinal()">Guardar cambios</button></div>` : `<p class="muted">${p.estado==="en_progreso" ? "Claude está trabajando en este pedido…" : "Todavía no hay contenido."}</p>`}
+    <div class="row">${acciones.join("")}</div>`;
+}
+async function pago() { await api(`/pedidos/${sel}/pago`, { method:"POST", body:{ adelanto:Number($("adel").value) } }); refrescar(); }
+async function guardarFinal() { await api(`/pedidos/${sel}/editar`, { method:"POST", body:{ final:$("fin").value } }); alert("Guardado"); }
+async function rehacer() { const i = prompt("¿Qué debe cambiar Claude? (opcional)"); if (i === null) return; await api(`/pedidos/${sel}/rehacer`, { method:"POST", body:{ instrucciones:i } }); refrescar(); }
+async function entregar() {
+  if ($("fin")) await api(`/pedidos/${sel}/editar`, { method:"POST", body:{ final:$("fin").value } });
+  if (!confirm("¿Enviar este trabajo al cliente por WhatsApp?")) return;
+  await api(`/pedidos/${sel}/entregar`, { method:"POST", body:{ formato:$("fmt").value } }); refrescar();
+}
+async function cancelar() { if (confirm("¿Cancelar este pedido?")) { await api(`/pedidos/${sel}/cancelar`, { method:"POST" }); refrescar(); } }
+function refrescar() { resumen(); verPedido(sel); }
+
+async function cargarChats() {
+  const lista = await api("/chats");
+  $("lc").innerHTML = lista.map((c) => `<div class="item ${c.telefono===selChat?"on":""}" onclick="verChat('${c.telefono}')">
+    <b>${esc(c.nombre || "+" + c.telefono)}</b> ${c.botActivo ? "" : '<span class="badge b-pendiente_pago">Atiendes tú</span>'}
+    <small>${esc(c.ultimo)}</small></div>`).join("") || `<div class="item muted">Aún no hay conversaciones.</div>`;
+}
+async function verChat(tel) {
+  selChat = tel; const c = await api("/chats/" + tel); cargarChats();
+  $("dc").innerHTML = `
+    <h3 style="margin-top:0">${esc(c.nombre || "")} +${esc(c.telefono)}</h3>
+    <div class="row"><button class="sec btn" onclick="toggleBot(${!c.botActivo})">${c.botActivo ? "⏸ Pausar bot (atender yo)" : "▶️ Reactivar bot"}</button></div>
+    <div class="msgs" id="msgs">${c.mensajes.map((m) => `<div class="m ${m.rol}"><small>${{cliente:"Cliente",bot:"Bot",humano:"Tú"}[m.rol]} · ${new Date(m.fecha).toLocaleString()}</small>${esc(m.texto)}</div>`).join("")}</div>
+    <div class="row"><input id="txt" placeholder="Escribe al cliente…" onkeydown="if(event.key==='Enter')enviar()"><button class="btn" onclick="enviar()">Enviar</button></div>`;
+  const box = $("msgs"); box.scrollTop = box.scrollHeight;
+}
+async function toggleBot(activo) { await api(`/chats/${selChat}/bot`, { method:"POST", body:{ activo } }); verChat(selChat); }
+async function enviar() { const t = $("txt").value.trim(); if (!t) return; await api(`/chats/${selChat}/mensaje`, { method:"POST", body:{ texto:t } }); verChat(selChat); }
+
+async function guardarCatalogo() {
+  let c; try { c = JSON.parse($("cat").value); } catch { return alert("El JSON tiene un error de formato."); }
+  await api("/catalogo", { method:"PUT", body:c }); alert("Precios guardados. El bot ya usa los nuevos precios.");
+}
+
+setInterval(() => { if (!$("app").classList.contains("hide")) { resumen(); if (!$("t-pedidos").classList.contains("hide")) cargarPedidos(); } }, 15000);
+if (TOKEN) iniciar();
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+{
+  "negocio": "Todo Se Puede",
+  "moneda": "S/",
+  "horario": "Lunes a sábado, 8:00 a 20:00",
+  "metodosPago": ["Yape", "Plin", "Transferencia BCP"],
+  "datosPago": "Yape/Plin: 999 999 999 (a nombre de TU NOMBRE)",
+  "politicas": [
+    "Se trabaja con el 50% de adelanto; el resto al entregar.",
+    "Incluye 1 ronda de correcciones sin costo.",
+    "Pedidos urgentes (menos de 24 h) tienen recargo del 30%."
+  ],
+  "servicios": [
+    {
+      "id": "cv",
+      "nombre": "Currículum vitae profesional",
+      "precio": 25,
+      "unidad": "por CV",
+      "tiempo": "24 horas",
+      "requisitos": "Datos personales, estudios, experiencia, habilidades y el puesto al que postula."
+    },
+    {
+      "id": "carta",
+      "nombre": "Carta formal o solicitud",
+      "precio": 15,
+      "unidad": "por carta",
+      "tiempo": "12 horas",
+      "requisitos": "A quién va dirigida, motivo y datos del remitente."
+    },
+    {
+      "id": "redaccion",
+      "nombre": "Redacción de textos (artículos, descripciones, publicaciones)",
+      "precio": 10,
+      "unidad": "por página (aprox. 400 palabras)",
+      "tiempo": "24 a 48 horas",
+      "requisitos": "Tema, público objetivo, extensión y tono deseado."
+    },
+    {
+      "id": "traduccion",
+      "nombre": "Traducción español ↔ inglés",
+      "precio": 12,
+      "unidad": "por página",
+      "tiempo": "24 horas",
+      "requisitos": "El texto original."
+    },
+    {
+      "id": "redes",
+      "nombre": "Pack de 10 publicaciones para redes sociales (textos + ideas de imagen)",
+      "precio": 60,
+      "unidad": "por pack",
+      "tiempo": "48 horas",
+      "requisitos": "Rubro del negocio, público, promociones y tono."
+    },
+    {
+      "id": "plan",
+      "nombre": "Plan de negocio o propuesta comercial",
+      "precio": 120,
+      "unidad": "por documento",
+      "tiempo": "3 a 5 días",
+      "requisitos": "Idea del negocio, inversión aproximada, público y objetivos."
+    }
+  ]
+}
