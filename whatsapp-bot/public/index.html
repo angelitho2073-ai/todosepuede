@@ -59,6 +59,7 @@
   <header>
     <h1>📲 WhatsApp + Claude</h1>
     <nav>
+      <button data-tab="conexion">Conexión</button>
       <button data-tab="pedidos" class="on">Pedidos</button>
       <button data-tab="chats">Chats</button>
       <button data-tab="catalogo">Precios</button>
@@ -66,6 +67,10 @@
   </header>
   <main>
     <div class="stats" id="stats"></div>
+
+    <section id="t-conexion" class="hide">
+      <div class="panel" id="cx" style="text-align:center"></div>
+    </section>
 
     <section id="t-pedidos">
       <div class="row"><select id="filtro" style="max-width:240px" onchange="cargarPedidos()">
@@ -115,12 +120,55 @@ async function iniciar() {
   try { await resumen(); } catch { return; }
   $("login").classList.add("hide"); $("app").classList.remove("hide");
   cargarPedidos();
+  const c = await api("/conexion");
+  if (c.modo === "qr" && !c.conectado) document.querySelector('[data-tab="conexion"]').click();
+  avisoConexion(c);
 }
+
+function avisoConexion(c) {
+  const b = document.querySelector('[data-tab="conexion"]');
+  b.textContent = c.conectado ? "🟢 Conexión" : "🔴 Conexión";
+}
+
+let cxTimer = null;
+async function conexion() {
+  clearTimeout(cxTimer);
+  const c = await api("/conexion"); avisoConexion(c);
+  const visible = !$("t-conexion").classList.contains("hide");
+  if (c.modo === "api") {
+    $("cx").innerHTML = `<h3>Conectado con la API oficial de Meta</h3><p class="muted">Los mensajes llegan por el webhook. Para usar QR pon WHATSAPP_MODO=qr en .env.</p>`;
+  } else if (c.conectado) {
+    $("cx").innerHTML = `<h3>🟢 WhatsApp conectado</h3><p>${esc(c.nombre || "")} +${esc(c.numero || "")}</p>
+      <p class="muted">Tu asistente está respondiendo. Tu celular sigue funcionando normal: si escribes tú a un cliente, el bot se pausa en ese chat por unas horas.</p>
+      <button class="dan btn" onclick="desconectar()">Desvincular WhatsApp</button>`;
+  } else {
+    $("cx").innerHTML = `<h3>Vincula tu WhatsApp</h3>
+      ${c.error ? `<p style="color:var(--err)">${esc(c.error)}</p>` : ""}
+      <ol style="text-align:left;max-width:420px;margin:0 auto 12px">
+        <li>Abre WhatsApp (o WhatsApp Business) en tu celular.</li>
+        <li>Toca <b>⋮ Menú</b> o <b>Configuración</b> → <b>Dispositivos vinculados</b> → <b>Vincular un dispositivo</b>.</li>
+        <li>Apunta la cámara a este código.</li>
+      </ol>
+      ${c.qr ? `<img src="${c.qr}" alt="Código QR" style="width:280px;max-width:100%;background:#fff;padding:8px;border-radius:12px">` : `<p class="muted">Generando código QR…</p>`}
+      <p class="muted" style="margin-top:16px">¿Estás en el mismo celular y no puedes escanear? Usa un código:</p>
+      <div class="row" style="justify-content:center"><input id="pnum" placeholder="Tu número con código de país, ej. 51987654321" style="max-width:300px"><button class="sec btn" onclick="pedirCodigo()">Obtener código</button></div>
+      <p id="pcod" style="font-size:28px;letter-spacing:4px;font-weight:700"></p>`;
+  }
+  if (visible || !c.conectado) cxTimer = setTimeout(conexion, c.conectado ? 15000 : 4000);
+}
+async function pedirCodigo() {
+  const { codigo } = await api("/conexion/codigo", { method:"POST", body:{ numero:$("pnum").value } });
+  clearTimeout(cxTimer);
+  $("pcod").innerHTML = esc(codigo) + `<br><span class="muted" style="font-size:14px;letter-spacing:0;font-weight:400">En WhatsApp: Dispositivos vinculados → Vincular un dispositivo → <b>Vincular con número de teléfono</b> y escribe este código.</span>`;
+  cxTimer = setTimeout(conexion, 30000);
+}
+async function desconectar() { if (confirm("¿Desvincular? El bot dejará de responder hasta que escanees de nuevo.")) { await api("/conexion/salir", { method:"POST" }); setTimeout(conexion, 2000); } }
 
 document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
   document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("on", x === b));
-  ["pedidos","chats","catalogo"].forEach((t) => $("t-" + t).classList.toggle("hide", t !== b.dataset.tab));
+  ["conexion","pedidos","chats","catalogo"].forEach((t) => $("t-" + t).classList.toggle("hide", t !== b.dataset.tab));
   if (b.dataset.tab === "chats") cargarChats();
+  if (b.dataset.tab === "conexion") conexion();
   if (b.dataset.tab === "catalogo") api("/catalogo").then((c) => $("cat").value = JSON.stringify(c, null, 2));
 });
 
@@ -134,7 +182,7 @@ async function cargarPedidos() {
   const lista = await api("/pedidos" + ($("filtro").value ? "?estado=" + $("filtro").value : ""));
   $("lp").innerHTML = lista.map((p) => `<div class="item ${p.id===sel?"on":""}" onclick="verPedido('${p.id}')">
     <b>${esc(p.servicio_nombre)}</b> <span class="badge b-${p.estado}">${ESTADOS[p.estado]}</span>
-    <small>${esc(p.cliente || p.telefono)} · ${moneda}${p.precio_total} · ${esc(p.id)}</small></div>`).join("") || `<div class="item muted">Aún no hay pedidos.</div>`;
+    <small>${esc(p.cliente || "+" + (p.numero || p.telefono))} · ${moneda}${p.precio_total} · ${esc(p.id)}</small></div>`).join("") || `<div class="item muted">Aún no hay pedidos.</div>`;
 }
 
 async function verPedido(id) {
@@ -146,7 +194,8 @@ async function verPedido(id) {
   if (!["entregado","cancelado"].includes(p.estado)) acciones.push(`<button class="dan btn" onclick="cancelar()">Cancelar</button>`);
   $("dp").innerHTML = `
     <h3 style="margin-top:0">${esc(p.servicio_nombre)} <span class="badge b-${p.estado}">${ESTADOS[p.estado]}</span></h3>
-    <p class="muted">${esc(p.cliente || "")} · +${esc(p.telefono)} · ${moneda}${p.precio_total} · Plazo: ${esc(p.plazo)} ${p.urgente ? "· URGENTE" : ""}</p>
+    <p class="muted">${esc(p.cliente || "")} · +${esc(p.numero || p.telefono)} · ${moneda}${p.precio_total} · Plazo: ${esc(p.plazo)} ${p.urgente ? "· URGENTE" : ""}</p>
+    ${p.pagoReportado && p.estado === "pendiente_pago" ? `<p style="color:var(--warn)">💰 El cliente reportó un pago de ${moneda}${p.pagoReportado.monto}: ${esc(p.pagoReportado.detalle)} (revisa la captura en Chats)</p>` : ""}
     ${p.error ? `<p style="color:var(--err)">⚠️ ${esc(p.error)}</p>` : ""}
     <details><summary>Instrucciones del pedido</summary><pre>${esc(p.descripcion)}</pre></details>
     ${p.notasRevision ? `<p><b>Correcciones pedidas:</b> ${esc(p.notasRevision)}</p>` : ""}
@@ -168,18 +217,28 @@ function refrescar() { resumen(); verPedido(sel); }
 
 async function cargarChats() {
   const lista = await api("/chats");
-  $("lc").innerHTML = lista.map((c) => `<div class="item ${c.telefono===selChat?"on":""}" onclick="verChat('${c.telefono}')">
-    <b>${esc(c.nombre || "+" + c.telefono)}</b> ${c.botActivo ? "" : '<span class="badge b-pendiente_pago">Atiendes tú</span>'}
+  $("lc").innerHTML = lista.map((c) => `<div class="item ${encodeURIComponent(c.telefono)===selChat?"on":""}" onclick="verChat('${encodeURIComponent(c.telefono)}')">
+    <b>${esc(c.nombre || "+" + c.numero)}</b> ${c.botActivo ? "" : `<span class="badge b-pendiente_pago">Atiendes tú${c.pausaHasta ? " hasta " + new Date(c.pausaHasta).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) : ""}</span>`}
     <small>${esc(c.ultimo)}</small></div>`).join("") || `<div class="item muted">Aún no hay conversaciones.</div>`;
 }
 async function verChat(tel) {
   selChat = tel; const c = await api("/chats/" + tel); cargarChats();
+  const img = (m) => m.imagen ? `<img src="/api/media/${encodeURIComponent(m.imagen.archivo)}" data-auth style="max-width:220px;border-radius:8px;display:block;margin:4px 0">` : "";
   $("dc").innerHTML = `
-    <h3 style="margin-top:0">${esc(c.nombre || "")} +${esc(c.telefono)}</h3>
+    <h3 style="margin-top:0">${esc(c.nombre || "")} +${esc(c.numero)}</h3>
     <div class="row"><button class="sec btn" onclick="toggleBot(${!c.botActivo})">${c.botActivo ? "⏸ Pausar bot (atender yo)" : "▶️ Reactivar bot"}</button></div>
-    <div class="msgs" id="msgs">${c.mensajes.map((m) => `<div class="m ${m.rol}"><small>${{cliente:"Cliente",bot:"Bot",humano:"Tú"}[m.rol]} · ${new Date(m.fecha).toLocaleString()}</small>${esc(m.texto)}</div>`).join("")}</div>
+    <div class="msgs" id="msgs">${c.mensajes.map((m) => `<div class="m ${m.rol}"><small>${{cliente:"Cliente",bot:"Bot",humano:"Tú"}[m.rol]} · ${new Date(m.fecha).toLocaleString()}</small>${img(m)}${esc(m.texto)}</div>`).join("")}</div>
     <div class="row"><input id="txt" placeholder="Escribe al cliente…" onkeydown="if(event.key==='Enter')enviar()"><button class="btn" onclick="enviar()">Enviar</button></div>`;
+  cargarImagenes();
   const box = $("msgs"); box.scrollTop = box.scrollHeight;
+}
+// Las imágenes van protegidas por token: se descargan con fetch.
+async function cargarImagenes() {
+  for (const im of document.querySelectorAll("img[data-auth]")) {
+    const r = await fetch(im.getAttribute("src"), { headers:{ Authorization:"Bearer " + TOKEN } });
+    if (r.ok) im.src = URL.createObjectURL(await r.blob());
+    im.removeAttribute("data-auth");
+  }
 }
 async function toggleBot(activo) { await api(`/chats/${selChat}/bot`, { method:"POST", body:{ activo } }); verChat(selChat); }
 async function enviar() { const t = $("txt").value.trim(); if (!t) return; await api(`/chats/${selChat}/mensaje`, { method:"POST", body:{ texto:t } }); verChat(selChat); }

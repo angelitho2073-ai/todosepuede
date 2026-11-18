@@ -4,9 +4,10 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import * as db from "./db.js";
-import { responder, catalogo } from "./agent.js";
+import { catalogo } from "./agent.js";
+import { recibirMensaje, mensajePropio } from "./inbox.js";
 import { iniciarWorker, entregar } from "./worker.js";
-import { enviarTexto, extraerMensajes, firmaValida, marcarLeido } from "./whatsapp.js";
+import { MODO, enviarTexto, extraerMensajes, firmaValida, qrEstado, iniciarQR, codigoVinculacion, cerrarSesion } from "./whatsapp.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -21,45 +22,11 @@ app.get("/webhook", (req, res) => {
   res.sendStatus(403);
 });
 
-// Cola por cliente: procesa sus mensajes uno a la vez.
-const colas = new Map();
-function encolar(telefono, fn) {
-  const prev = colas.get(telefono) || Promise.resolve();
-  const next = prev.then(fn).catch((e) => console.error("Error atendiendo", telefono, e));
-  colas.set(telefono, next);
-  next.finally(() => colas.get(telefono) === next && colas.delete(telefono));
-}
-
-// Espera unos segundos por si el cliente manda varios mensajes seguidos.
-const AGRUPAR_MS = Number(process.env.AGRUPAR_MS || 4000);
-const temporizadores = new Map();
-
 app.post("/webhook", (req, res) => {
+  if (MODO !== "api") return res.sendStatus(404);
   if (!firmaValida(req.rawBody, req.get("x-hub-signature-256"))) return res.sendStatus(401);
   res.sendStatus(200); // responder rápido a Meta
-
-  for (const m of extraerMensajes(req.body)) {
-    if (db.yaProcesado(m.id)) continue;
-    db.getChat(m.telefono, m.nombre);
-    db.addMensaje(m.telefono, "cliente", m.texto);
-    marcarLeido(m.id);
-    if (!db.getChat(m.telefono).botActivo || process.env.BOT_PAUSADO === "true") continue;
-
-    clearTimeout(temporizadores.get(m.telefono));
-    temporizadores.set(
-      m.telefono,
-      setTimeout(() => {
-        temporizadores.delete(m.telefono);
-        encolar(m.telefono, async () => {
-          const texto = await responder(m.telefono);
-          if (texto) {
-            await enviarTexto(m.telefono, texto);
-            db.addMensaje(m.telefono, "bot", texto);
-          }
-        });
-      }, AGRUPAR_MS)
-    );
-  }
+  for (const m of extraerMensajes(req.body)) recibirMensaje(m).catch((e) => console.error(e));
 });
 
 // ---------------- API del panel (protegida) ----------------
@@ -149,6 +116,17 @@ api.post("/chats/:tel/bot", (req, res) => {
   res.json(chat);
 });
 
+// Conexión de WhatsApp (modo QR)
+api.get("/conexion", (_req, res) => res.json({ modo: MODO, ...(MODO === "qr" ? qrEstado : { conectado: true }) }));
+api.post("/conexion/codigo", wrap(async (req, res) => res.json({ codigo: await codigoVinculacion(String(req.body.numero || "")) })));
+api.post("/conexion/salir", wrap(async (_req, res) => {
+  await cerrarSesion();
+  setTimeout(() => iniciarQR({ mensaje: recibirMensaje, propio: mensajePropio }).catch(console.error), 1000);
+  res.json({ ok: true });
+}));
+
+api.get("/media/:archivo", (req, res) => res.sendFile(db.rutaMedia(req.params.archivo)));
+
 api.get("/catalogo", (_req, res) => res.json(catalogo()));
 api.put("/catalogo", wrap(async (req, res) => {
   if (!req.body?.servicios) throw new Error("El catálogo debe tener 'servicios'");
@@ -166,4 +144,9 @@ app.listen(PORT, () => {
   console.log(`Panel: http://localhost:${PORT}/  |  Webhook: /webhook`);
   if (!process.env.ADMIN_TOKEN) console.warn("⚠️  Define ADMIN_TOKEN en .env para usar el panel.");
   iniciarWorker();
+  if (MODO === "qr") {
+    iniciarQR({ mensaje: recibirMensaje, propio: mensajePropio }).catch((e) => console.error("Error iniciando WhatsApp:", e));
+  } else {
+    console.log("Modo API oficial: configura el webhook en Meta apuntando a /webhook");
+  }
 });

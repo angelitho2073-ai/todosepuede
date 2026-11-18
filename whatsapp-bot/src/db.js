@@ -27,25 +27,40 @@ export function save() {
 }
 
 // ---------- Chats ----------
-export function getChat(telefono, nombre) {
+export function getChat(telefono, nombre, numero) {
   if (!db.chats[telefono]) {
     db.chats[telefono] = {
-      telefono,
+      telefono, // id para enviar (en modo QR: "51999...@s.whatsapp.net")
+      numero: numero || String(telefono).split("@")[0], // número visible
       nombre: nombre || "",
       botActivo: true, // false = un humano tomó el control
+      pausaHasta: null, // si lo pausaste escribiendo tú, cuándo se reactiva solo
       mensajes: [], // { rol: "cliente"|"bot"|"humano", texto, fecha }
       ultimaActividad: null,
       ultimoMensajeCliente: null,
     };
   }
-  if (nombre && !db.chats[telefono].nombre) db.chats[telefono].nombre = nombre;
-  return db.chats[telefono];
+  const c = db.chats[telefono];
+  if (nombre && !c.nombre) c.nombre = nombre;
+  if (numero && numero !== c.numero) c.numero = numero;
+  return c;
 }
 
-export function addMensaje(telefono, rol, texto) {
+// Las imágenes se guardan como archivo (no dentro del JSON) para que Claude pueda verlas.
+const MEDIA_DIR = path.join(DATA_DIR, "media");
+const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+
+export function addMensaje(telefono, rol, texto, { imagen } = {}) {
   const chat = getChat(telefono);
   const fecha = new Date().toISOString();
-  chat.mensajes.push({ rol, texto, fecha });
+  const msg = { rol, texto, fecha };
+  if (imagen && EXT[imagen.media_type]) {
+    fs.mkdirSync(MEDIA_DIR, { recursive: true });
+    const nombre = `${Date.now()}-${crypto.randomBytes(3).toString("hex")}.${EXT[imagen.media_type]}`;
+    fs.writeFileSync(path.join(MEDIA_DIR, nombre), Buffer.from(imagen.data, "base64"));
+    msg.imagen = { archivo: nombre, media_type: imagen.media_type };
+  }
+  chat.mensajes.push(msg);
   chat.ultimaActividad = fecha;
   if (rol === "cliente") chat.ultimoMensajeCliente = fecha;
   save();
@@ -106,3 +121,12 @@ export function listPedidos(filtro = {}) {
     Object.entries(filtro).every(([k, v]) => v === undefined || p[k] === v)
   );
 }
+
+export function leerImagen(img) {
+  try {
+    return fs.readFileSync(path.join(MEDIA_DIR, path.basename(img.archivo))).toString("base64");
+  } catch {
+    return null;
+  }
+}
+export const rutaMedia = (archivo) => path.resolve(MEDIA_DIR, path.basename(archivo));

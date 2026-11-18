@@ -1,8 +1,34 @@
 {
   "negocio": "Todo Se Puede",
+  "asistente": "Sofía",
   "moneda": "S/",
   "horario": "Lunes a sábado, 8:00 a 20:00",
-  "metodosPago": ["Yape", "Plin", "Transferencia BCP"],
+  "informacion": {
+    "sobreNosotros": "Somos un equipo que hace trabajos de redacción y documentos de forma rápida, con revisión humana antes de cada entrega.",
+    "ubicacion": "Atendemos 100% online, a todo el país.",
+    "comoTrabajamos": "Nos escribes lo que necesitas, te cotizamos, pagas el adelanto, hacemos el trabajo, lo revisamos y te lo enviamos por aquí en Word o texto.",
+    "entregas": "Por este mismo WhatsApp, en documento Word o como texto.",
+    "garantia": "Si algo no te gusta, lo corregimos sin costo una vez."
+  },
+  "preguntasFrecuentes": [
+    {
+      "pregunta": "¿Cuánto demoran?",
+      "respuesta": "Depende del servicio: cada uno tiene su tiempo de entrega en la lista. Si es urgente, se puede adelantar con recargo."
+    },
+    {
+      "pregunta": "¿Atienden domingos?",
+      "respuesta": "Puedes escribir cuando quieras; los pedidos se trabajan de lunes a sábado."
+    },
+    {
+      "pregunta": "¿Es confidencial?",
+      "respuesta": "Sí, tus datos y documentos solo se usan para tu pedido."
+    }
+  ],
+  "metodosPago": [
+    "Yape",
+    "Plin",
+    "Transferencia BCP"
+  ],
   "datosPago": "Yape/Plin: 999 999 999 (a nombre de TU NOMBRE)",
   "politicas": [
     "Se trabaja con el 50% de adelanto; el resto al entregar.",
