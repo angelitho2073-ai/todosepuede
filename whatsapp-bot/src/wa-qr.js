@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import QRCode from "qrcode";
 import pino from "pino";
+import { HttpsProxyAgent } from "https-proxy-agent";
 import makeWASocket, {
   Browsers,
   DisconnectReason,
@@ -74,8 +75,14 @@ export async function iniciar(h) {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }));
 
+  // Si el servidor sale a internet por un proxy (HTTPS_PROXY), WhatsApp también debe usarlo.
+  const proxy = process.env.WHATSAPP_PROXY || process.env.HTTPS_PROXY;
+  const agent = proxy ? new HttpsProxyAgent(proxy) : undefined;
+
   sock = makeWASocket({
     version,
+    agent,
+    fetchAgent: agent,
     auth: state,
     logger,
     browser: Browsers.macOS("Desktop"),
